@@ -1,12 +1,9 @@
 # sriram-portfolio
 
-A portfolio built as an explorable world rather than a page. Visitors move an
-avatar through a space and enter rooms, where each room is a section of the
-portfolio.
+Personal portfolio for Sriram Parthiban — AI Automation Engineer.
 
-Work in progress — the world itself isn't built yet. What's here is the
-foundation plus a temporary smoke-test scene that proves the rendering,
-physics and animation layers work together.
+A single-page, scroll-driven site: GSAP timelines and ScrollTrigger over Lenis
+smooth scroll, with a dark editorial layout built around large type. No backend.
 
 ## Stack
 
@@ -15,13 +12,10 @@ physics and animation layers work together.
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS v4 |
-| 3D | Three.js via React Three Fiber + drei |
-| Physics | Rapier (`@react-three/rapier`) |
-| Animation | GSAP + ScrollTrigger |
-| State | Zustand |
+| Animation | GSAP 3 — ScrollTrigger, SplitText, `@gsap/react` |
+| Smooth scroll | Lenis |
+| Fonts | Archivo, Instrument Serif, Geist Mono (`next/font`) |
 | Hosting | Vercel |
-
-No backend.
 
 ## Running locally
 
@@ -36,6 +30,7 @@ Then open http://localhost:3000.
 
 ```bash
 npm run build   # production build
+npm start       # serve the production build
 npm run lint    # eslint
 ```
 
@@ -43,10 +38,29 @@ npm run lint    # eslint
 
 ```
 src/
-  app/          routes, layout, global styles
-  components/   React + R3F components
-public/         static assets and 3D models
+  app/
+    layout.tsx      fonts, metadata, preloader + smooth scroll providers
+    page.tsx        section composition
+    globals.css     design tokens, type scale, grain, marquee
+  components/       one file per section
+  lib/
+    content.ts      all copy and resume data — edit here, not in components
+    gsap.ts         single place plugins are registered
+    scrollLock.ts   preloader/Lenis scroll locking
 ```
 
-`src/components/SmokeTestScene.tsx` is a throwaway stack check and will be
-deleted once the real world lands.
+All text lives in `src/lib/content.ts`. Changing a job, project, metric or
+certification means editing that file only; the sections render from it.
+
+## Motion notes
+
+- Every animated section checks `prefers-reduced-motion` and falls back to a
+  static layout. Lenis is not installed at all when reduced motion is set.
+- The projects section uses a pinned horizontal scroll above 768px only; below
+  that the panels stack and scroll normally.
+- GSAP plugins are registered once in `src/lib/gsap.ts`.
+
+## Deploying
+
+Import the repo on Vercel. Framework preset is detected automatically; no
+environment variables are needed.

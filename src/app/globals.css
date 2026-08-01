@@ -1,26 +1,157 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #0b0b0c;
+  --ink-soft: #141416;
+  --bone: #efeae3;
+  --bone-dim: #a5a09a;
+  --muted: #6b6862;
+  --ember: #e2542c;
+  --line: rgba(239, 234, 227, 0.14);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-bone: var(--bone);
+  --color-bone-dim: var(--bone-dim);
+  --color-muted: var(--muted);
+  --color-ember: var(--ember);
+  --color-line: var(--line);
+
+  --font-display: var(--font-archivo);
+  --font-sans: var(--font-archivo);
+  --font-serif: var(--font-instrument);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  min-width: 0;
+}
+
+html {
+  background: var(--ink);
+  /* Lenis drives scrolling; native smooth scroll would fight it. */
+  scroll-behavior: auto;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ink);
+  color: var(--bone);
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--ember);
+  color: var(--bone);
+}
+
+/* --- Lenis --- */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* --- Type utilities --- */
+.display {
+  font-family: var(--font-archivo), sans-serif;
+  font-weight: 800;
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.serif-accent {
+  font-family: var(--font-instrument), serif;
+  font-style: italic;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: -0.02em;
+  color: var(--ember);
+}
+
+.label {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+
+/* Fluid display scale — clamps stop the giant type breaking small screens. */
+.t-mega {
+  font-size: clamp(3.25rem, 15vw, 15rem);
+}
+.t-xl {
+  font-size: clamp(2.5rem, 8vw, 7rem);
+}
+.t-lg {
+  font-size: clamp(2rem, 5vw, 4rem);
+}
+
+/* --- SplitText line masking --- */
+.split-line-wrap {
+  overflow: hidden;
+  display: block;
+}
+
+/* --- Grain overlay --- */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 8s steps(6) infinite;
+}
+
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  16% { transform: translate(-3%, -5%); }
+  33% { transform: translate(4%, -2%); }
+  50% { transform: translate(-2%, 4%); }
+  66% { transform: translate(3%, 3%); }
+  83% { transform: translate(-4%, 1%); }
+}
+
+/* --- Marquee --- */
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 40s linear infinite;
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* --- Link underline --- */
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.link-underline:hover {
+  background-size: 100% 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track,
+  .grain::after {
+    animation: none;
+  }
 }

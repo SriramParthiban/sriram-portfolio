@@ -1,0 +1,11 @@
+# Normalize to LF in the repository so Windows checkouts and the Linux build
+# environment on Vercel agree on file contents.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

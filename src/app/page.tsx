@@ -1,18 +1,31 @@
-'use client';
-
-import dynamic from 'next/dynamic';
-
-const SmokeTestScene = dynamic(() => import('@/components/SmokeTestScene'), {
-  ssr: false,
-});
+import Nav from "@/components/Nav";
+import Hero from "@/components/Hero";
+import Marquee from "@/components/Marquee";
+import About from "@/components/About";
+import Metrics from "@/components/Metrics";
+import Capabilities from "@/components/Capabilities";
+import Experience from "@/components/Experience";
+import Projects from "@/components/Projects";
+import Certifications from "@/components/Certifications";
+import Contact from "@/components/Contact";
+import Footer from "@/components/Footer";
 
 export default function Home() {
   return (
-    <main className="relative h-dvh w-full">
-      <SmokeTestScene />
-      <div className="pointer-events-none absolute inset-x-0 bottom-8 text-center text-sm tracking-widest text-white/40 uppercase">
-        stack smoke test — replace with the real world
-      </div>
-    </main>
+    <>
+      <Nav />
+      <main>
+        <Hero />
+        <Marquee />
+        <About />
+        <Metrics />
+        <Capabilities />
+        <Experience />
+        <Projects />
+        <Certifications />
+        <Contact />
+      </main>
+      <Footer />
+    </>
   );
 }
