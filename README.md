@@ -102,6 +102,11 @@ Borrowed from how Stardew Valley builds a map:
   the whole 16×24 sprite, so the head can overlap the tile above.
 - **Warp on contact.** Stepping onto a door tile enters — no confirm prompt. It
   fires on the transition onto the tile, not while standing on it.
+- **Roads are kept visually clear.** A tree's trunk takes one tile but its
+  canopy spreads two tiles either side and reaches three tiles *above* its base,
+  so a tree standing beside or below a road buries it even though the road tile
+  itself is walkable. Any tree whose canopy would fall across a road is removed.
+  The overhang lives in `trees.ts` and the clearance is asserted, not eyeballed.
 - **Movement is axis-separated**, so you slide along a wall instead of sticking
   to it.
 

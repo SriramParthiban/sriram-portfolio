@@ -7,6 +7,8 @@
  * and six roads leading out, one to each building.
  */
 
+import { CANOPY } from "./trees";
+
 export const TILE = 16;
 export const MAP_W = 48;
 export const MAP_H = 32;
@@ -186,21 +188,21 @@ export const buildings: Building[] = [
     signSub: "CERTIFICATIONS",
     icon: "trophy",
     x: 13,
-    y: 22,
+    y: 20,
     w: 6,
     h: 4,
     doorX: 15,
-    doorY: 26,
+    doorY: 24,
     wall: "#a9906a",
     roof: "#d09a2e",
     roofDark: "#a06f1c",
     flair: "sparkle",
     road: [
       { x: 24, y: 16 },
-      { x: 20, y: 21 },
-      { x: 20, y: 27 },
-      { x: 15, y: 27 },
-      { x: 15, y: 26 },
+      { x: 20, y: 19 },
+      { x: 20, y: 25 },
+      { x: 15, y: 25 },
+      { x: 15, y: 24 },
     ],
   },
   {
@@ -211,39 +213,52 @@ export const buildings: Building[] = [
     signSub: "CONTACT",
     icon: "mail",
     x: 29,
-    y: 22,
+    y: 20,
     w: 6,
     h: 4,
     doorX: 31,
-    doorY: 26,
+    doorY: 24,
     wall: "#9a7f66",
     roof: "#c25f3c",
     roofDark: "#924024",
     flair: "mail",
     road: [
       { x: 24, y: 16 },
-      { x: 27, y: 21 },
-      { x: 27, y: 27 },
-      { x: 31, y: 27 },
-      { x: 31, y: 26 },
+      { x: 27, y: 19 },
+      { x: 27, y: 25 },
+      { x: 31, y: 25 },
+      { x: 31, y: 24 },
     ],
   },
 ];
 
 type Rect = { x: number; y: number; w: number; h: number };
 
-const forests: Rect[] = [
+/** The wall of trees that closes the map in. */
+const border: Rect[] = [
   { x: 0, y: 0, w: MAP_W, h: 3 },
   { x: 0, y: 0, w: 4, h: MAP_H },
   { x: MAP_W - 4, y: 0, w: 4, h: MAP_H },
   { x: 0, y: MAP_H - 3, w: MAP_W, h: 3 },
+];
+
+/** Loose stands of trees inside the valley — kept sparse so they read as
+ *  individual trees rather than one green mass. */
+const groves: Rect[] = [
   { x: 4, y: 4, w: 6, h: 7 },
   { x: 20, y: 3, w: 4, h: 5 },
   { x: 39, y: 4, w: 5, h: 7 },
-  { x: 4, y: 23, w: 7, h: 5 },
-  { x: 22, y: 22, w: 4, h: 4 },
-  { x: 42, y: 12, w: 3, h: 8 },
+  { x: 4, y: 26, w: 7, h: 3 },
+  { x: 22, y: 21, w: 4, h: 4 },
+  { x: 42, y: 12, w: 3, h: 7 },
 ];
+
+/**
+ * The outermost ring is always solid, so thinning the forest elsewhere can
+ * never open a gap onto the edge of the world.
+ */
+const isOuterRing = (x: number, y: number) =>
+  x < 2 || y < 2 || x >= MAP_W - 2 || y >= MAP_H - 2;
 
 const meadows: Rect[] = [
   { x: 18, y: 8, w: 5, h: 3 },
@@ -253,8 +268,11 @@ const meadows: Rect[] = [
   { x: 34, y: 12, w: 3, h: 2 },
 ];
 
-/** Pond, tucked into the south-east away from every road. */
-const pond = { cx: 41, cy: 27, rx: 4, ry: 3 };
+/**
+ * Pond, tucked into the south-east away from every road. Kept clear of the
+ * outer ring: its sand shore is walkable and would otherwise open the wall.
+ */
+const pond = { cx: 40, cy: 25, rx: 4, ry: 3 };
 
 const inRect = (x: number, y: number, r: Rect) =>
   x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
@@ -325,8 +343,8 @@ export const props: Prop[] = [
   { kind: "stump", x: 35, y: 14 },
 
   // Trophy Hall
-  { kind: "lamp", x: 12, y: 27 },
-  { kind: "pot", x: 19, y: 26 },
+  { kind: "lamp", x: 12, y: 26 },
+  { kind: "pot", x: 19, y: 27 },
 
   // Post Office
   { kind: "crate", x: 26, y: 27 },
@@ -363,12 +381,22 @@ export const terrain: Terrain[] = (() => {
     for (let x = 0; x < MAP_W; x++) {
       const h = hash(x, y);
 
-      // Forest first, thinned at the edges so the border isn't a solid wall.
-      if (forests.some((r) => inRect(x, y, r))) {
-        set(x, y, h > 0.22 ? Terrain.Tree : h > 0.12 ? Terrain.Bush : Terrain.Grass);
+      if (isOuterRing(x, y)) {
+        set(x, y, Terrain.Tree);
+      } else if (border.some((r) => inRect(x, y, r))) {
+        set(x, y, h > 0.26 ? Terrain.Tree : h > 0.14 ? Terrain.Bush : Terrain.Grass);
+      } else if (groves.some((r) => inRect(x, y, r))) {
+        // Half density inside the valley. At the old 78% the groves merged
+        // into one undifferentiated green mass.
+        set(x, y, h > 0.52 ? Terrain.Tree : h > 0.36 ? Terrain.Bush : Terrain.Grass);
       }
 
-      if (meadows.some((r) => inRect(x, y, r)) && h > 0.4) {
+      // Flowers only on open ground, never carved out of the tree wall.
+      if (
+        meadows.some((r) => inRect(x, y, r)) &&
+        out[y * MAP_W + x] === Terrain.Grass &&
+        h > 0.4
+      ) {
         set(x, y, Terrain.Flowers);
       }
 
@@ -417,28 +445,55 @@ export const terrain: Terrain[] = (() => {
   }
 
   // A fence line along the south meadow, purely for texture.
-  for (let x = 21; x < 30; x++) set(x, 30, Terrain.Fence);
+  for (let x = 21; x < 27; x++) set(x, 28, Terrain.Fence);
 
-  // Clear small obstacles touching a walkway. A rock or bush half a tile off
-  // the path is invisible from a distance and just feels like being blocked
-  // by nothing. Trees stay — they read clearly as something to walk around.
+  // Re-assert the outer ring last, so nothing generated above — a pond shore,
+  // a meadow, a road — can leave a walkable gap at the edge of the world.
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (isOuterRing(x, y)) set(x, y, Terrain.Tree);
+    }
+  }
+
   const walkable = (x: number, y: number) => {
     if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return false;
     const t = out[y * MAP_W + x];
     return t === Terrain.Path || t === Terrain.Plaza;
   };
 
+  /** Does anything this tile would draw over sit on a road? */
+  const shadesARoad = (x: number, y: number, side: number, up: number) => {
+    for (let dy = -up; dy <= 0; dy++) {
+      for (let dx = -side; dx <= side; dx++) {
+        if (walkable(x + dx, y + dy)) return true;
+      }
+    }
+    return false;
+  };
+
+  // Keep the roads visually clear.
+  //
+  // A tree's trunk takes one tile but its canopy spreads CANOPY.side tiles
+  // either way and reaches CANOPY.up tiles ABOVE its base — so a tree standing
+  // beside or below a road blankets it even though the road tile itself is
+  // walkable. Clearing only trees whose trunk is on the road left the paths
+  // buried. The outer ring is exempt: it is the edge of the world.
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
+      if (isOuterRing(x, y)) continue;
       const t = out[y * MAP_W + x];
-      if (t !== Terrain.Rock && t !== Terrain.Bush) continue;
-      let touching = false;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (walkable(x + dx, y + dy)) touching = true;
-        }
+
+      if (t === Terrain.Tree) {
+        if (shadesARoad(x, y, CANOPY.side, CANOPY.up)) set(x, y, Terrain.Grass);
+        continue;
       }
-      if (touching) set(x, y, Terrain.Grass);
+
+      // Rocks and bushes are short, so they only need to be off the verge. A
+      // rock half a tile from the path is invisible at a glance and just feels
+      // like being blocked by nothing.
+      if (t === Terrain.Rock || t === Terrain.Bush) {
+        if (shadesARoad(x, y, 1, 1)) set(x, y, Terrain.Grass);
+      }
     }
   }
 

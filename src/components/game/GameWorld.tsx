@@ -250,9 +250,35 @@ export default function GameWorld() {
       return false;
     };
 
+    /**
+     * Last-resort safety: if the player somehow ends up inside a solid tile —
+     * a moved prop, a resize, a rounding edge — walk outward until a free
+     * tile is found rather than leaving them wedged with no way out.
+     */
+    const unstick = () => {
+      if (!blocked(state.x, state.y)) return;
+      for (let radius = 1; radius <= 8; radius++) {
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+            const nx = state.x + dx * TILE;
+            const ny = state.y + dy * TILE;
+            if (!blocked(nx, ny)) {
+              state.x = nx;
+              state.y = ny;
+              return;
+            }
+          }
+        }
+      }
+    };
+    unstick();
+
     const tick = (_t: number, deltaMs: number) => {
       const dt = Math.min(deltaMs, 50) / 1000;
       elapsed += dt;
+
+      if (blocked(state.x, state.y)) unstick();
 
       let dx = 0;
       let dy = 0;

@@ -1,5 +1,6 @@
 import { drawText, textWidth } from "./font";
 import { FOUNTAIN } from "./fountain";
+import { TREE_VARIANTS } from "./trees";
 import {
   Building,
   IconKind,
@@ -407,9 +408,6 @@ function makeCanvas(w: number, h: number) {
 
 /* -- trees -- */
 
-export const TREE_W = 48;
-export const TREE_H = 72;
-
 const TREE_GREENS: RGB[][] = [
   [
     [26, 58, 26],
@@ -436,12 +434,13 @@ const TREE_GREENS: RGB[][] = [
 
 /** Three tree variants, drawn once and blitted — canopies are dense. */
 function makeTree(variant: number) {
-  const { c, ctx } = makeCanvas(TREE_W, TREE_H);
+  const size = TREE_VARIANTS[variant];
+  const { c, ctx } = makeCanvas(size.w, size.h);
   if (!ctx) return c;
 
   const greens = TREE_GREENS[variant];
-  const cx = TREE_W / 2;
-  const baseY = TREE_H - 4;
+  const cx = size.w / 2;
+  const baseY = size.h - 4;
 
   // Ground shadow
   ctx.fillStyle = "rgba(0,0,0,0.22)";
@@ -469,12 +468,12 @@ function makeTree(variant: number) {
 
   // Canopy: blobby mass built from noise, then shaded top-left to bottom-right
   const canopyCX = cx;
-  const canopyCY = variant === 1 ? 24 : 22;
-  const rx = variant === 1 ? 17 : 21;
-  const ry = variant === 1 ? 22 : 18;
+  const canopyCY = Math.round(size.h * 0.34);
+  const rx = size.w / 2 - 1;
+  const ry = Math.round(size.h * 0.31);
 
   for (let y = 0; y < canopyCY + ry; y++) {
-    for (let x = 0; x < TREE_W; x++) {
+    for (let x = 0; x < size.w; x++) {
       const dx = (x - canopyCX) / rx;
       const dy = (y - canopyCY) / ry;
       const d = dx * dx + dy * dy;
@@ -518,11 +517,12 @@ export function drawTree(
   if (!treeSprites) treeSprites = [makeTree(0), makeTree(1), makeTree(2)];
   const variant = Math.floor(hash2(tx, ty) * 3) % 3;
   const sprite = treeSprites[variant];
+  const size = TREE_VARIANTS[variant];
   // Anchor: bottom-centre of the sprite sits on the bottom-centre of the tile.
   ctx.drawImage(
     sprite,
-    tx * TILE + TILE / 2 - TREE_W / 2,
-    (ty + 1) * TILE - TREE_H + 2,
+    tx * TILE + TILE / 2 - size.w / 2,
+    (ty + 1) * TILE - size.h + 2,
   );
 }
 
