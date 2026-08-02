@@ -346,6 +346,56 @@ function paintGroundDetail(ctx: CanvasRenderingContext2D) {
   }
 }
 
+/* ---------------------------------------------------------------- minimap */
+
+const MINIMAP_COLORS: Record<number, RGB> = {
+  [Terrain.Grass]: [74, 122, 46],
+  [Terrain.Flowers]: [106, 154, 62],
+  [Terrain.Path]: [184, 147, 94],
+  [Terrain.Plaza]: [168, 154, 134],
+  [Terrain.Water]: [58, 134, 174],
+  [Terrain.Sand]: [214, 188, 144],
+  [Terrain.Tree]: [40, 74, 32],
+  [Terrain.Bush]: [53, 102, 47],
+  [Terrain.Rock]: [125, 122, 117],
+  [Terrain.Fence]: [138, 106, 69],
+};
+
+/**
+ * One pixel per tile. Built once — only the player marker and the viewport
+ * box move, and those are drawn over the top each frame.
+ */
+export function buildMinimapCanvas(buildingList: Building[]) {
+  const canvas = document.createElement("canvas");
+  canvas.width = MAP_W;
+  canvas.height = MAP_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const img = ctx.createImageData(MAP_W, MAP_H);
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const c = MINIMAP_COLORS[terrainAt(x, y)] ?? MINIMAP_COLORS[Terrain.Grass];
+      const i = (y * MAP_W + x) * 4;
+      img.data[i] = c[0];
+      img.data[i + 1] = c[1];
+      img.data[i + 2] = c[2];
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // Buildings in their roof colour so each is recognisable at a glance.
+  for (const b of buildingList) {
+    ctx.fillStyle = b.roof;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.fillStyle = b.roofDark;
+    ctx.fillRect(b.x, b.y + b.h - 1, b.w, 1);
+  }
+
+  return canvas;
+}
+
 /** Animated shimmer, drawn over the static water each frame. */
 export function drawWater(
   ctx: CanvasRenderingContext2D,

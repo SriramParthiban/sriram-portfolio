@@ -14,6 +14,7 @@ import LocationPanel from "./LocationPanel";
 import { drawCharacter, type Dir } from "./sprite";
 import {
   buildGroundCanvas,
+  buildMinimapCanvas,
   drawBuilding,
   drawProp,
   drawTree,
@@ -74,6 +75,7 @@ export default function GameWorld() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const groundRef = useRef<HTMLCanvasElement | null>(null);
+  const miniRef = useRef<HTMLCanvasElement>(null);
   const keys = useRef(new Set<string>());
   const joyOrigin = useRef<{ x: number; y: number; id: number } | null>(null);
 
@@ -213,7 +215,17 @@ export default function GameWorld() {
 
     groundRef.current = buildGroundCanvas();
     const ground = groundRef.current;
+    const minimap = buildMinimapCanvas(buildings);
     const state = rt.current;
+
+    const MINI_SCALE = 3;
+    const mini = miniRef.current;
+    const miniCtx = mini?.getContext("2d") ?? null;
+    if (mini && miniCtx) {
+      mini.width = MAP_W * MINI_SCALE;
+      mini.height = MAP_H * MINI_SCALE;
+      miniCtx.imageSmoothingEnabled = false;
+    }
 
     let cssW = 0;
     let cssH = 0;
@@ -456,6 +468,31 @@ export default function GameWorld() {
       for (const item of items) item.draw();
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+      /* ---- minimap ---- */
+      if (miniCtx) {
+        const m = MINI_SCALE;
+        miniCtx.drawImage(minimap, 0, 0, MAP_W * m, MAP_H * m);
+
+        // What the player can currently see.
+        miniCtx.strokeStyle = "rgba(246,234,210,0.55)";
+        miniCtx.lineWidth = 1;
+        miniCtx.strokeRect(
+          Math.round((state.camX / TILE) * m) + 0.5,
+          Math.round((state.camY / TILE) * m) + 0.5,
+          Math.round((viewW / TILE) * m),
+          Math.round((viewH / TILE) * m),
+        );
+
+        // The player, pulsing so it is findable at a glance.
+        const mx = Math.round((state.x / TILE) * m);
+        const my = Math.round((state.y / TILE) * m);
+        const pulse = 2 + (Math.sin(elapsed * 4) > 0 ? 1 : 0);
+        miniCtx.fillStyle = "#2a1c11";
+        miniCtx.fillRect(mx - pulse - 1, my - pulse - 1, pulse * 2 + 2, pulse * 2 + 2);
+        miniCtx.fillStyle = "#ffffff";
+        miniCtx.fillRect(mx - pulse, my - pulse, pulse * 2, pulse * 2);
+      }
     };
 
     gsap.ticker.add(tick);
@@ -511,44 +548,87 @@ export default function GameWorld() {
       />
 
       {/* ---- HUD ---- */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-4 md:p-6">
-        <div className="border-line rounded-md border bg-black/55 px-4 py-3 backdrop-blur-sm">
-          <p className="display text-lg leading-none md:text-xl">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-3 md:p-5">
+        {/* Location plaque */}
+        <div className="hud-panel px-3 py-2 md:px-4 md:py-3">
+          <p className="hud-text text-[11px] font-bold md:text-sm">
             {profile.first}
-            <span className="text-ember">.</span>
+            <span className="text-[#f0a878]"> </span>
             {profile.last}
           </p>
-          <p className="label mt-2 !text-[10px]">{region}</p>
+          <p className="hud-text mt-2 text-[9px] text-[#e8c9a0] md:text-[10px]">
+            <span className="text-[#f0a878]">◆</span> {region}
+          </p>
         </div>
 
         <div className="flex flex-col items-end gap-2">
           <button
             type="button"
             onClick={() => exitToDocument("#top")}
-            className="label link-underline pointer-events-auto rounded-md bg-black/55 px-3 py-2 !text-bone backdrop-blur-sm"
+            className="hud-panel hud-button hud-text pointer-events-auto px-3 py-2 text-[9px] font-bold md:text-[10px]"
           >
             Read as a document ↓
           </button>
-          <p className="label !text-[10px] rounded-md bg-black/40 px-3 py-2">
-            {visited.size} / {buildings.length} places visited
-          </p>
+
+          {/* One pip per place, lit in that building's roof colour. */}
+          <div className="hud-panel-dark flex items-center gap-1.5 px-3 py-2">
+            <span className="hud-text mr-1 text-[9px] text-[#bfae94]">
+              {visited.size}/{buildings.length}
+            </span>
+            {buildings.map((b) => (
+              <span
+                key={b.id}
+                className="pip"
+                data-visited={visited.has(b.id)}
+                style={{ color: b.roof }}
+                title={`${b.name} — ${b.signSub}`}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Door prompt */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 p-6">
+      {/* Minimap */}
+      <div className="hud-panel absolute bottom-3 left-3 hidden p-1.5 md:block">
+        <canvas
+          ref={miniRef}
+          className="block w-36 [image-rendering:pixelated]"
+        />
+      </div>
+
+      {/* Door banner + controls */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3 md:p-5">
         {nearDoor && !open && (
-          <p className="border-ember bg-ink/85 rounded-md border px-4 py-2 text-sm backdrop-blur-sm">
-            Entering <span className="text-ember">{nearDoor.name}</span>
-          </p>
+          <div
+            className="hud-panel flex items-center gap-2 px-4 py-2"
+            style={{ background: nearDoor.roof }}
+          >
+            <span className="hud-text text-[10px] font-bold">
+              ▸ {nearDoor.name}
+            </span>
+            <span className="hud-text text-[9px] text-[#2a1c11]">
+              {nearDoor.signSub}
+            </span>
+          </div>
         )}
-        <p className="label border-line hidden rounded-md border bg-black/65 px-4 py-2 text-center !text-[10px] backdrop-blur-sm md:block">
-          WASD / arrows to walk · shift to run · walk into a door to enter · esc
-          to leave a building
-        </p>
-        <p className="label border-line rounded-md border bg-black/65 px-4 py-2 text-center !text-[10px] backdrop-blur-sm md:hidden">
+
+        <div className="hud-panel-dark hud-text hidden items-center gap-2 px-4 py-2 text-[9px] text-[#cfbfa6] md:flex">
+          <kbd className="keycap">W</kbd>
+          <kbd className="keycap">A</kbd>
+          <kbd className="keycap">S</kbd>
+          <kbd className="keycap">D</kbd>
+          <span className="ml-1">Walk</span>
+          <span className="mx-2 text-[#6b5c48]">|</span>
+          <kbd className="keycap px-2">Shift</kbd>
+          <span className="ml-1">Run</span>
+          <span className="mx-2 text-[#6b5c48]">|</span>
+          <kbd className="keycap px-2">Esc</kbd>
+          <span className="ml-1">Leave</span>
+        </div>
+
+        <div className="hud-panel-dark hud-text px-4 py-2 text-[9px] text-[#cfbfa6] md:hidden">
           Drag anywhere to walk
-        </p>
+        </div>
       </div>
 
       {open && (

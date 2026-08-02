@@ -68,6 +68,13 @@ src/
 Controls: `WASD` / arrows to walk, `Shift` to run, walk into a door to enter,
 `Esc` to leave a building. Touch devices drag anywhere to steer.
 
+The HUD is styled as game chrome rather than web chrome: hard-edged panels with
+a light top bevel and a dark bottom lip, keycaps for the controls, and one pip
+per building lit in that building's roof colour as you visit it. Rounded
+corners, backdrop blur and hairline borders read as a web app and clash badly
+sitting on top of pixel art. A minimap sits bottom-left — terrain baked once at
+one pixel per tile, with the player and the current viewport drawn over it.
+
 | Building | Section |
 | --- | --- |
 | The Archive | About & Education |

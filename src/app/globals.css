@@ -124,6 +124,87 @@ html.lenis body {
   83% { transform: translate(-4%, 1%); }
 }
 
+/* --- Game HUD ---
+   Chrome for the world overlay. Rounded corners, blur and hairline borders
+   read as web UI and clash badly with pixel art; these panels are hard-edged
+   with a light top bevel and a dark bottom lip, the way game panels are cut. */
+.hud-panel {
+  background: #7a5a3a;
+  color: #f6ead2;
+  border-radius: 0;
+  box-shadow:
+    inset 0 1px 0 0 #a8834f,
+    inset 0 -3px 0 0 #55391f,
+    0 0 0 2px #2a1c11,
+    0 3px 0 0 rgba(0, 0, 0, 0.4);
+}
+
+.hud-panel-dark {
+  background: rgba(22, 17, 12, 0.9);
+  color: #f6ead2;
+  border-radius: 0;
+  box-shadow:
+    inset 0 1px 0 0 rgba(246, 234, 210, 0.18),
+    inset 0 -2px 0 0 rgba(0, 0, 0, 0.5);
+  outline: 2px solid #2a1c11;
+  outline-offset: 0;
+}
+
+.hud-text {
+  font-family: var(--font-geist-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  line-height: 1;
+}
+
+.hud-button {
+  transition:
+    transform 0.08s steps(2),
+    filter 0.15s;
+}
+.hud-button:hover {
+  filter: brightness(1.12);
+}
+/* Presses into the panel rather than lifting — matches the bevel. */
+.hud-button:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 0 #a8834f,
+    inset 0 -1px 0 0 #55391f,
+    0 0 0 2px #2a1c11;
+}
+
+.keycap {
+  display: inline-flex;
+  min-width: 1.5em;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  background: #efe7d6;
+  color: #2a1c11;
+  font-weight: 700;
+  box-shadow:
+    0 0 0 1px #2a1c11,
+    0 2px 0 0 #96866a;
+}
+
+/* Visit tracker pips */
+.pip {
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 0 1px #2a1c11;
+  background: rgba(246, 234, 210, 0.14);
+  transition:
+    background 0.3s,
+    box-shadow 0.3s;
+}
+.pip[data-visited="true"] {
+  box-shadow:
+    0 0 0 1px #2a1c11,
+    0 0 6px 0 currentColor;
+  background: currentColor;
+}
+
 /* --- Playground --- */
 /* The site nav would otherwise sit on top of the world overlay. */
 .playground-open header {
