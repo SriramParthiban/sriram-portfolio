@@ -1,24 +1,33 @@
 /**
  * The character, hand-authored as pixel matrices.
  *
- * The first version was assembled from rectangles, which is why it read as a
- * mannequin — rectangles cannot describe a hairline, a cheekbone or an eye.
- * Every pixel here is placed deliberately, the way a sprite actually gets made.
+ * Built to Stardew's proportions after comparing side by side:
  *
- * 16 wide x 26 tall, so the head overlaps the tile above at 16px tiles.
+ *  - The head, hair included, is a little over half the sprite. Realistic
+ *    proportions read as a stiff mannequin at 16px; the chibi head is what
+ *    gives the character its charm.
+ *  - Eyes are 2px wide and 3px TALL — white, iris, pupil stacked. They are the
+ *    dominant feature of the face. Two dark dots read as a doll.
+ *  - Outlines are a dark tint of the fill, never black. A hard black keyline
+ *    makes a 16px sprite look harsh and cut out.
+ *  - The face sits high with bangs above it, so the head reads as a face with
+ *    hair on top rather than a hair blob with a patch of skin at the bottom.
+ *
+ * 16 wide x 29 tall, so the head overlaps the tile above at 16px tiles.
  */
 
 export type Dir = "down" | "up" | "left" | "right";
 
 const COLORS: Record<string, string> = {
-  o: "#17120e", // outline
-  h: "#432814", // hair shadow
-  H: "#6b401f", // hair mid
-  L: "#96602f", // hair highlight
-  s: "#f5c79b", // skin
-  S: "#d19a6b", // skin shade
+  k: "#3a2415", // outline — a dark warm brown, not black
+  h: "#6b3d1c", // hair shadow
+  H: "#96602f", // hair light
+  n: "#d19a6b", // skin shade
+  s: "#f7cfa3", // skin
   w: "#ffffff", // eye white
-  e: "#263449", // pupil
+  i: "#4a7ba8", // iris
+  e: "#1c2438", // pupil
+  m: "#c4705a", // mouth
   c: "#e2542c", // shirt
   C: "#f5794c", // shirt lit
   d: "#a83c18", // shirt shadow
@@ -26,8 +35,8 @@ const COLORS: Record<string, string> = {
   P: "#2a3854", // left trouser shade
   q: "#3d4f74", // right trouser
   Q: "#2a3854", // right trouser shade
-  b: "#4a3020", // left boot
-  v: "#4a3020", // right boot
+  b: "#5a3a22", // left boot
+  v: "#5a3a22", // right boot
 };
 
 /** Pixels belonging to each leg, so the walk cycle can lift them separately. */
@@ -35,94 +44,103 @@ const LEFT_LEG = new Set(["p", "P", "b"]);
 const RIGHT_LEG = new Set(["q", "Q", "v"]);
 
 export const SPRITE_W = 16;
-export const SPRITE_H = 26;
+export const SPRITE_H = 29;
 
 const DOWN = [
-  ".....oooooo.....",
-  "...oohhhhhhoo...",
-  "..ohhhhhhhhhho..",
-  ".ohhhHHHHHHhhho.",
-  ".ohhHHLLLLHHhho.",
-  ".ohHHLLLLLLHHho.",
-  ".ohHHHHHHHHHHho.",
-  ".ohhssssssssHho.",
-  ".ohssssssssssho.",
-  ".ohswesssswesho.",
-  ".ohswesssswesho.",
-  ".ohsSssssssSsho.",
-  ".ohssssSSssssho.",
-  "..ohssssssssho..",
-  "...ooSSSSSSoo...",
-  ".occCCCCCCCCcco.",
-  "oscCCCCCCCCCCcso",
-  "oscCCCCCCCCCCcso",
-  "osccCCCCCCCCccso",
-  ".osccccccccccso.",
-  ".oddddddddddddo.",
-  "...opppo.oqqqo..",
-  "...opppo.oqqqo..",
-  "...oPPPo.oQQQo..",
-  "...obbbo.ovvvo..",
-  "...ooooo.ooooo..",
+  ".....kkkkkk.....",
+  "...kkhhhhhhkk...",
+  "..khhhhhhhhhhk..",
+  ".khhhHHHHHHhhhk.",
+  "khhhHHHHHHHHhhhk",
+  "khhHHHHHHHHHHhhk",
+  "khhHHHHHHHHHHhhk",
+  "khhhHHHHHHHHhhhk",
+  "khhnssssssssnhhk",
+  "khhsssssssssshhk",
+  "khsswwsssswwsshk",
+  "khssiissssiisshk",
+  "khsseesssseesshk",
+  "khsnssssssssnshk",
+  "khsssssmmssssshk",
+  ".khsssssssssshk.",
+  "..kknnnnnnnnkk..",
+  ".kccCCCCCCCCcck.",
+  "kncCCCCCCCCCCcnk",
+  "kncCCCCCCCCCCcnk",
+  "kscCCCCCCCCCCcsk",
+  "ksccCCCCCCCCccsk",
+  ".kcccccccccccck.",
+  ".kddddddddddddk.",
+  "...kpppkkqqqk...",
+  "...kpppkkqqqk...",
+  "...kPPPkkQQQk...",
+  "...kbbbkkvvvk...",
+  "...kkkkkkkkkk...",
 ];
 
 const UP = [
-  ".....oooooo.....",
-  "...oohhhhhhoo...",
-  "..ohhhhhhhhhho..",
-  ".ohhhHHHHHHhhho.",
-  ".ohhHHLLLLHHhho.",
-  ".ohHHLLLLLLHHho.",
-  ".ohHHHHHHHHHHho.",
-  ".ohhHHHHHHHHhho.",
-  ".ohhhHHHHHHhhho.",
-  ".ohhhhHHHHhhhho.",
-  ".ohhhhhhhhhhhho.",
-  ".ohhhhhhhhhhhho.",
-  ".ohhhhhhhhhhhho.",
-  "..ohhhhhhhhhho..",
-  "...ooSSSSSSoo...",
-  ".occCCCCCCCCcco.",
-  "oscCCCCCCCCCCcso",
-  "oscCCCCCCCCCCcso",
-  "osccCCCCCCCCccso",
-  ".osccccccccccso.",
-  ".oddddddddddddo.",
-  "...opppo.oqqqo..",
-  "...opppo.oqqqo..",
-  "...oPPPo.oQQQo..",
-  "...obbbo.ovvvo..",
-  "...ooooo.ooooo..",
+  ".....kkkkkk.....",
+  "...kkhhhhhhkk...",
+  "..khhhhhhhhhhk..",
+  ".khhhHHHHHHhhhk.",
+  "khhhHHHHHHHHhhhk",
+  "khhHHHHHHHHHHhhk",
+  "khhHHHHHHHHHHhhk",
+  "khhhHHHHHHHHhhhk",
+  "khhhhhhhhhhhhhhk",
+  "khhhhhhhhhhhhhhk",
+  "khhhhhhhhhhhhhhk",
+  "khhhhhhhhhhhhhhk",
+  "khhhhhhhhhhhhhhk",
+  "khhhhhhhhhhhhhhk",
+  "khhhhhhhhhhhhhhk",
+  ".khhhhhhhhhhhhk.",
+  "..kknnnnnnnnkk..",
+  ".kccCCCCCCCCcck.",
+  "kncCCCCCCCCCCcnk",
+  "kncCCCCCCCCCCcnk",
+  "kscCCCCCCCCCCcsk",
+  "ksccCCCCCCCCccsk",
+  ".kcccccccccccck.",
+  ".kddddddddddddk.",
+  "...kpppkkqqqk...",
+  "...kpppkkqqqk...",
+  "...kPPPkkQQQk...",
+  "...kbbbkkvvvk...",
+  "...kkkkkkkkkk...",
 ];
 
 /** Right-facing profile. Left is drawn mirrored from this. */
 const SIDE = [
-  ".....oooooo.....",
-  "...oohhhhhhoo...",
-  "..ohhhhhhhhhho..",
-  ".ohhhHHHHHHhhho.",
-  ".ohhHHLLLLLHHho.",
-  ".ohhHHLLLLLLHho.",
-  ".ohhHHHHHHHHHho.",
-  ".ohhhhssssssSho.",
-  ".ohhhsssssssSho.",
-  ".ohhhswesssssho.",
-  ".ohhhswesssssho.",
-  ".ohhhsssssssSho.",
-  ".ohhssssssSSsho.",
-  "..ohsssssssssho.",
-  "...ooSSSSSSoo...",
-  ".occCCCCCCCCcco.",
-  ".occCCCCCCCCcso.",
-  ".occCCCCCCCCcso.",
-  ".occCCCCCCCCcso.",
-  ".occcccccccccso.",
-  ".oddddddddddddo.",
-  "....opppoqqqo...",
-  "....opppoqqqo...",
-  "....oPPPoQQQo...",
-  "....obbbovvvo...",
-  "....ooooooooo...",
+  ".....kkkkkk.....",
+  "...kkhhhhhhkk...",
+  "..khhhhhhhhhhk..",
+  ".khhhHHHHHHhhhk.",
+  "khhhHHHHHHHHhhhk",
+  "khhHHHHHHHHHHhhk",
+  "khhHHHHHHHHHHhhk",
+  "khhhHHHHHHhhnnsk",
+  "khhhhHHHHhnssssk",
+  "khhhhhhhhssssssk",
+  "khhhhhhssswwsssk",
+  "khhhhhhsssiisssk",
+  "khhhhhhssseesssk",
+  "khhhhhssssssnssk",
+  "khhhhssssssmmssk",
+  ".khhssssssssssk.",
+  "..kknnnnnnnnkk..",
+  ".kccCCCCCCCCcck.",
+  ".kccCCCCCCCCcnk.",
+  ".kccCCCCCCCCcnk.",
+  ".kccCCCCCCCCcsk.",
+  ".kccCCCCCCCCcsk.",
+  ".kcccccccccccck.",
+  ".kddddddddddddk.",
+  "....kpppkqqqk...",
+  "....kpppkqqqk...",
+  "....kPPPkQQQk...",
+  "....kbbbkvvvk...",
+  "....kkkkkkkkk...",
 ];
 
 const MATRIX: Record<Exclude<Dir, "left">, string[]> = {
@@ -207,7 +225,7 @@ export function drawCharacter(
   const px = Math.round(x);
   const py = Math.round(y);
 
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillStyle = "rgba(0,0,0,0.26)";
   ctx.fillRect(px - 6, py - 3, 12, 4);
   ctx.fillRect(px - 4, py - 4, 8, 1);
 

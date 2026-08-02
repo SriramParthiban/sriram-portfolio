@@ -118,9 +118,19 @@ six roads leading out, one to each building. Each road is a polyline in
 `world.ts`, rasterised with a 2×2 brush. Southern buildings need their road to
 wrap around them, because every door faces south — away from the hub.
 
-The character is a hand-authored pixel matrix (16×26, four directions), not a
+The character is a hand-authored pixel matrix (16×29, four directions), not a
 composition of rectangles. Rectangles cannot describe a hairline, a cheekbone or
-an eye, which is why the first attempt read as a mannequin.
+an eye. Its proportions follow the genre closely, and those rules are asserted
+rather than eyeballed:
+
+- the head, hair included, is a little over half the sprite — realistic
+  proportions read as a stiff mannequin at 16px
+- eyes are 2px wide and 3px **tall**, white over iris over pupil; two flat dots
+  read as a doll
+- outlines are a dark tint of the fill, never black — a hard keyline makes a
+  small sprite look cut out
+- the face sits high with bangs above it, so the head reads as a face with hair
+  on top rather than a hair blob with a patch of skin at the bottom
 
 Terrain is generated from feature shapes in `world.ts` rather than a hand-typed
 tile string — a 48×32 string is 1536 characters that all have to line up, and
