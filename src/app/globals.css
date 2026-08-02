@@ -124,6 +124,13 @@ html.lenis body {
   83% { transform: translate(-4%, 1%); }
 }
 
+/* --- Playground --- */
+/* The site nav would otherwise sit on top of the world overlay. */
+.playground-open header {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* --- Marquee --- */
 .marquee-track {
   display: flex;

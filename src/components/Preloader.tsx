@@ -17,18 +17,18 @@ export default function Preloader() {
 
       if (reduced) {
         setDone(true);
-        unlockScroll();
+        unlockScroll("preloader");
         return;
       }
 
       // A reload can restore mid-page scroll behind the overlay.
       window.scrollTo(0, 0);
-      lockScroll();
+      lockScroll("preloader");
       const count = { n: 0 };
 
       const tl = gsap.timeline({
         onComplete: () => {
-          unlockScroll();
+          unlockScroll("preloader");
           setDone(true);
         },
       });
@@ -55,7 +55,7 @@ export default function Preloader() {
           ease: "expo.inOut",
         });
 
-      return () => unlockScroll();
+      return () => unlockScroll("preloader");
     },
     { scope: root },
   );
