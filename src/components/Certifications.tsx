@@ -26,7 +26,11 @@ export default function Certifications() {
   );
 
   return (
-    <section ref={root} className="px-6 py-24 md:px-10 md:py-36">
+    <section
+      id="certifications"
+      ref={root}
+      className="px-6 py-24 md:px-10 md:py-36"
+    >
       <SectionHeading index="05" label="Certifications">
         Formally <span className="serif-accent">verified</span>
       </SectionHeading>

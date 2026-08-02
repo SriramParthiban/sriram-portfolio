@@ -2,11 +2,15 @@
 
 Personal portfolio for Sriram Parthiban — AI Automation Engineer.
 
-Two ways in. The landing experience is an interactive **playground**: a
-side-scrolling world with a character the visitor walks along a corridor of lit
-doorways, one per section. Walking into a doorway drops you into that section of
-the site proper — a single-page, scroll-driven layout built on GSAP timelines
-and ScrollTrigger over Lenis smooth scroll. No backend.
+Two ways in. The landing experience is a **top-down explorable valley** in the
+Stardew Valley mould: a character you walk around a map of six buildings, each
+one a section of the portfolio. Walk into a door and you're inside that section.
+Underneath it is a conventional single-page, scroll-driven site built on GSAP
+timelines and ScrollTrigger over Lenis smooth scroll, reachable at any time. No
+backend.
+
+All pixel art is drawn procedurally in code. No game assets are copied or
+vendored.
 
 ## Stack
 
@@ -46,10 +50,12 @@ src/
     page.tsx        section composition
     globals.css     design tokens, type scale, grain, marquee
   components/
-    playground/     the interactive landing world
-      Playground.tsx  world, camera, character controller, door entry
-      Character.tsx   character SVG (transforms driven from Playground)
-      stations.ts     door positions and section mapping
+    game/           the explorable valley
+      GameWorld.tsx   loop, input, collision, camera, depth sorting
+      world.ts        terrain generation, buildings, collision, warps
+      render.ts       tile / tree / building painters and per-place flair
+      sprite.ts       the character, drawn from pixel-aligned rects
+      LocationPanel.tsx  building interiors, fed from content.ts
     *.tsx           one file per page section
   lib/
     content.ts      all copy and resume data — edit here, not in components
@@ -57,19 +63,44 @@ src/
     scrollLock.ts   keyed scroll locking shared by preloader and playground
 ```
 
-## Playground
+## The valley
 
-Controls: `←` `→` or `A` / `D` to walk, click anywhere to walk there, click a
-doorway to walk to it and enter, `E` / `Enter` to enter the nearest doorway,
-`Esc` or "Skip intro" to go straight to the site. Touch devices get on-screen
-walk buttons; tapping a doorway also works.
+Controls: `WASD` / arrows to walk, `Shift` to run, walk into a door to enter,
+`Esc` to leave a building. Touch devices drag anywhere to steer.
 
-Doors are placed at `stationX(i)` in `stations.ts` and mapped to section
-anchors, so adding a section means adding one entry there.
+| Building | Section |
+| --- | --- |
+| The Archive | About & Education |
+| The Workshop | Experience |
+| The Foundry | Capabilities |
+| The Gallery | Projects |
+| Trophy Hall | Certifications |
+| Post Office | Contact |
 
-It renders client-side only. That is deliberate: the page's HTML still contains
-the full resume text for crawlers and link previews, with the world layered on
-top in the browser.
+### How it works
+
+Borrowed from how Stardew Valley builds a map:
+
+- **16px tiles**, drawn at an integer scale (3× to 5× depending on viewport) so
+  pixels stay square.
+- **Depth sorting on the bottom edge.** Trees, buildings and the player go into
+  one list sorted by their baseline Y, so you walk *behind* a tree canopy but
+  *in front of* its trunk. This is the single trick that makes a flat tilemap
+  read as having depth.
+- **Feet-only collision.** The hitbox is 10×6px at the character's feet, not
+  the whole 16×24 sprite, so the head can overlap the tile above.
+- **Warp on contact.** Stepping onto a door tile enters — no confirm prompt. It
+  fires on the transition onto the tile, not while standing on it.
+- **Movement is axis-separated**, so you slide along a wall instead of sticking
+  to it.
+
+Terrain is generated from feature rectangles in `world.ts` rather than a
+hand-typed tile string — a 48×32 string is 1536 characters that all have to line
+up, and one miscount silently shifts the whole map.
+
+The world renders client-side only. That is deliberate: the page's HTML still
+contains the full resume text for crawlers and link previews, with the game
+layered on top in the browser.
 
 All text lives in `src/lib/content.ts`. Changing a job, project, metric or
 certification means editing that file only; the sections render from it.
@@ -78,8 +109,8 @@ certification means editing that file only; the sections render from it.
 
 - Every animated section checks `prefers-reduced-motion` and falls back to a
   static layout. Lenis is not installed at all when reduced motion is set, and
-  the playground is skipped entirely — a visitor-driven camera is exactly what
-  that setting is asking us not to do.
+  the valley is skipped entirely — a visitor-driven camera is exactly what that
+  setting is asking us not to do.
 - The projects section uses a pinned horizontal scroll above 768px only; below
   that the panels stack and scroll normally.
 - GSAP plugins are registered once in `src/lib/gsap.ts`.

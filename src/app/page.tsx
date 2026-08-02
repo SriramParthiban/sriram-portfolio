@@ -1,4 +1,4 @@
-import Playground from "@/components/playground/Playground";
+import GameWorld from "@/components/game/GameWorld";
 import Nav from "@/components/Nav";
 import Hero from "@/components/Hero";
 import Marquee from "@/components/Marquee";
@@ -14,7 +14,7 @@ import Footer from "@/components/Footer";
 export default function Home() {
   return (
     <>
-      <Playground />
+      <GameWorld />
       <Nav />
       <main>
         <Hero />
