@@ -142,38 +142,77 @@ const SIDE = [
 ];
 
 /**
- * Four leg poses: contact, stride, contact, opposite stride. The planted foot
- * keeps its sole row; the trailing foot lifts off it. Whole poses rather than
- * offsets, because a stride needs the legs to move apart, not just up.
+ * Four leg poses: contact, stride, contact, opposite stride.
+ *
+ * Legs are three pixels thick and sit side by side under the hips. Two-pixel
+ * legs with a gap between them read as bones at this zoom. The stride is shown
+ * by which foot keeps its sole row — the trailing one lifts off — rather than
+ * by swinging the legs apart, which only widens the gap.
  */
-const LEGS: string[][] = [
+const FRONT_LEGS: string[][] = [
   [
-    "....kppkkqqk....",
-    "....kppkkqqk....",
-    "....kPPkkQQk....",
-    "....kbbkkvvk....",
+    "...kpppkkqqqk...",
+    "...kpppkkqqqk...",
+    "...kPPPkkQQQk...",
+    "...kbbbkkvvvk...",
+    "...kkkkkkkkkk...",
+  ],
+  [
+    "...kpppkkqqqk...",
+    "...kpppkkqqqk...",
+    "...kPPPkkQQQk...",
+    "...kbbbkkvvvk...",
+    "...kkkkk........",
+  ],
+  [
+    "...kpppkkqqqk...",
+    "...kpppkkqqqk...",
+    "...kPPPkkQQQk...",
+    "...kbbbkkvvvk...",
+    "...kkkkkkkkkk...",
+  ],
+  [
+    "...kpppkkqqqk...",
+    "...kpppkkqqqk...",
+    "...kPPPkkQQQk...",
+    "...kbbbkkvvvk...",
+    "........kkkkk...",
+  ],
+];
+
+/**
+ * In profile the legs overlap — you see one in front of the other, close
+ * together — and scissor only slightly as they pass. Reusing the front poses
+ * here was what left a gap straight through the middle of the character.
+ */
+const SIDE_LEGS: string[][] = [
+  [
+    "....kpppqqqk....",
+    "....kpppqqqk....",
+    "....kPPPQQQk....",
+    "....kbbbvvvk....",
     "....kkkkkkkk....",
   ],
   [
-    "...kppk.kqqk....",
-    "...kppk.kqqk....",
-    "...kPPk.kQQk....",
-    "..kbbk...kvvk...",
-    "..kkkk...kkkk...",
+    "...kpppkqqqk....",
+    "...kpppkqqqk....",
+    "...kPPPkQQQk....",
+    "..kbbbk.kvvvk...",
+    "..kkkkk..kkkkk..",
   ],
   [
-    "....kppkkqqk....",
-    "....kppkkqqk....",
-    "....kPPkkQQk....",
-    "....kbbkkvvk....",
+    "....kpppqqqk....",
+    "....kpppqqqk....",
+    "....kPPPQQQk....",
+    "....kbbbvvvk....",
     "....kkkkkkkk....",
   ],
   [
-    "....kppk.kqqk...",
-    "....kppk.kqqk...",
-    "....kPPk.kQQk...",
-    "...kbbk...kvvk..",
-    "...kkkk...kkkk..",
+    "....kpppkqqqk...",
+    "....kpppkqqqk...",
+    "....kPPPkQQQk...",
+    "...kbbbk.kvvvk..",
+    "...kkkkk..kkkkk.",
   ],
 ];
 
@@ -193,7 +232,12 @@ const FRAMES: { bob: number; armL: number; armR: number }[] = [
 
 export const FRAME_COUNT = FRAMES.length;
 
-function renderFrame(body: string[], frame: number, mirror: boolean) {
+function renderFrame(
+  body: string[],
+  legs: string[][],
+  frame: number,
+  mirror: boolean,
+) {
   const canvas = document.createElement("canvas");
   canvas.width = SPRITE_W;
   canvas.height = SPRITE_H;
@@ -223,9 +267,9 @@ function renderFrame(body: string[], frame: number, mirror: boolean) {
   }
 
   // Feet stay on the ground — only the body bobs.
-  const legs = LEGS[frame];
-  for (let y = 0; y < legs.length; y++) {
-    const row = legs[y];
+  const pose = legs[frame];
+  for (let y = 0; y < pose.length; y++) {
+    const row = pose[y];
     for (let x = 0; x < SPRITE_W; x++) {
       const ch = row[x];
       if (!ch || ch === ".") continue;
@@ -240,14 +284,14 @@ let cache: Record<Dir, HTMLCanvasElement[]> | null = null;
 
 function frames(): Record<Dir, HTMLCanvasElement[]> {
   if (cache) return cache;
-  const build = (rows: string[], mirror = false) =>
-    FRAMES.map((_, i) => renderFrame(rows, i, mirror));
+  const build = (rows: string[], legs: string[][], mirror = false) =>
+    FRAMES.map((_, i) => renderFrame(rows, legs, i, mirror));
 
   cache = {
-    down: build(MATRIX.down),
-    up: build(MATRIX.up),
-    right: build(MATRIX.right),
-    left: build(MATRIX.right, true),
+    down: build(MATRIX.down, FRONT_LEGS),
+    up: build(MATRIX.up, FRONT_LEGS),
+    right: build(MATRIX.right, SIDE_LEGS),
+    left: build(MATRIX.right, SIDE_LEGS, true),
   };
   return cache;
 }
@@ -280,4 +324,12 @@ export function drawCharacter(
 }
 
 /** Exposed so the sprite matrices can be checked outside the browser. */
-export const SPRITE_SHEETS = { DOWN, UP, SIDE, LEGS, COLORS, FRAMES };
+export const SPRITE_SHEETS = {
+  DOWN,
+  UP,
+  SIDE,
+  FRONT_LEGS,
+  SIDE_LEGS,
+  COLORS,
+  FRAMES,
+};
