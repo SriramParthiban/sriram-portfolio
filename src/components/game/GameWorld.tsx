@@ -38,7 +38,9 @@ import {
 
 const WALK = 78; // world px per second
 const RUN = 126;
-const FRAME_TIME = 0.13;
+// Slightly quicker than the distance travelled would suggest. A walk cycle
+// timed exactly to stride length reads as sluggish at this sprite size.
+const FRAME_TIME = 0.11;
 
 /** Feet-only collision box, so the head can overlap tiles above. */
 const FEET_W = 10;

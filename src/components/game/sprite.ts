@@ -4,16 +4,18 @@
  * Built to Stardew's proportions after comparing side by side:
  *
  *  - The head, hair included, is a little over half the sprite. Realistic
- *    proportions read as a stiff mannequin at 16px; the chibi head is what
- *    gives the character its charm.
- *  - Eyes are 2px wide and 3px TALL — white, iris, pupil stacked. They are the
- *    dominant feature of the face. Two dark dots read as a doll.
- *  - Outlines are a dark tint of the fill, never black. A hard black keyline
- *    makes a 16px sprite look harsh and cut out.
- *  - The face sits high with bangs above it, so the head reads as a face with
- *    hair on top rather than a hair blob with a patch of skin at the bottom.
+ *    proportions read as a stiff mannequin at 16px.
+ *  - Eyes are 2px wide and 3px TALL — white, iris, pupil stacked.
+ *  - Outlines are a dark tint of the fill, never black.
+ *  - The torso is clearly narrower than the head, with a neck and a waist.
+ *    Matching widths reads as two stacked circles.
  *
- * 16 wide x 29 tall, so the head overlaps the tile above at 16px tiles.
+ * The walk is a proper four-frame cycle: contact, pass, contact, pass. Legs get
+ * a whole pose per frame rather than being nudged up and down — a leg that only
+ * bobs vertically reads as sliding, not walking — and the arms swing opposite
+ * to them while the body rises on the passing frames.
+ *
+ * 16 wide x 30 tall: 25 rows of body plus a 5-row leg pose.
  */
 
 export type Dir = "down" | "up" | "left" | "right";
@@ -31,6 +33,13 @@ const COLORS: Record<string, string> = {
   c: "#e2542c", // shirt
   C: "#f5794c", // shirt lit
   d: "#a83c18", // shirt shadow
+  // Arms are tagged separately from the torso so they can swing.
+  x: "#3a2415", // left arm outline
+  X: "#3a2415", // right arm outline
+  a: "#e2542c", // left sleeve
+  A: "#e2542c", // right sleeve
+  j: "#f7cfa3", // left hand
+  J: "#f7cfa3", // right hand
   p: "#3d4f74", // left trouser
   P: "#2a3854", // left trouser shade
   q: "#3d4f74", // right trouser
@@ -39,12 +48,13 @@ const COLORS: Record<string, string> = {
   v: "#5a3a22", // right boot
 };
 
-/** Pixels belonging to each leg, so the walk cycle can lift them separately. */
-const LEFT_LEG = new Set(["p", "P", "b"]);
-const RIGHT_LEG = new Set(["q", "Q", "v"]);
+const LEFT_ARM = new Set(["x", "a", "j"]);
+const RIGHT_ARM = new Set(["X", "A", "J"]);
 
 export const SPRITE_W = 16;
-export const SPRITE_H = 30;
+export const BODY_ROWS = 25;
+export const LEG_ROWS = 5;
+export const SPRITE_H = BODY_ROWS + LEG_ROWS;
 
 const DOWN = [
   ".....kkkkkk.....",
@@ -66,17 +76,12 @@ const DOWN = [
   "..kksssssssskk..",
   ".....knnnnk.....",
   "...kccCCCCcck...",
-  ".kckcCCCCCCckck.",
-  ".kckcCCCCCCckck.",
-  ".kskcCCCCCCcksk.",
-  ".kskccCCCCccksk.",
+  ".xaxcCCCCCCcXAX.",
+  ".xaxcCCCCCCcXAX.",
+  ".xjxcCCCCCCcXJX.",
+  ".xjxccCCCCccXJX.",
   "...kcccccccck...",
   "...kddddddddk...",
-  "....kppkkqqk....",
-  "....kppkkqqk....",
-  "....kPPkkQQk....",
-  "....kbbkkvvk....",
-  "....kkkkkkkk....",
 ];
 
 const UP = [
@@ -99,17 +104,12 @@ const UP = [
   "..kkhhhhhhhhkk..",
   ".....knnnnk.....",
   "...kccCCCCcck...",
-  ".kckcCCCCCCckck.",
-  ".kckcCCCCCCckck.",
-  ".kskcCCCCCCcksk.",
-  ".kskccCCCCccksk.",
+  ".xaxcCCCCCCcXAX.",
+  ".xaxcCCCCCCcXAX.",
+  ".xjxcCCCCCCcXJX.",
+  ".xjxccCCCCccXJX.",
   "...kcccccccck...",
   "...kddddddddk...",
-  "....kppkkqqk....",
-  "....kppkkqqk....",
-  "....kPPkkQQk....",
-  "....kbbkkvvk....",
-  "....kkkkkkkk....",
 ];
 
 /** Right-facing profile. Left is drawn mirrored from this. */
@@ -133,17 +133,48 @@ const SIDE = [
   "..kksssssssskk..",
   ".....knnnnk.....",
   "...kccCCCCcck...",
-  "...kcCCCCCCcknk.",
-  "...kcCCCCCCcknk.",
-  "...kcCCCCCCcksk.",
-  "...kccCCCCccksk.",
+  "...kcCCCCCCcXAX.",
+  "...kcCCCCCCcXAX.",
+  "...kcCCCCCCcXJX.",
+  "...kccCCCCccXJX.",
   "...kcccccccck...",
   "...kddddddddk...",
-  "....kppkkqqk....",
-  "....kppkkqqk....",
-  "....kPPkkQQk....",
-  "....kbbkkvvk....",
-  "....kkkkkkkk....",
+];
+
+/**
+ * Four leg poses: contact, stride, contact, opposite stride. The planted foot
+ * keeps its sole row; the trailing foot lifts off it. Whole poses rather than
+ * offsets, because a stride needs the legs to move apart, not just up.
+ */
+const LEGS: string[][] = [
+  [
+    "....kppkkqqk....",
+    "....kppkkqqk....",
+    "....kPPkkQQk....",
+    "....kbbkkvvk....",
+    "....kkkkkkkk....",
+  ],
+  [
+    "...kppk.kqqk....",
+    "...kppk.kqqk....",
+    "...kPPk.kQQk....",
+    "..kbbk...kvvk...",
+    "..kkkk...kkkk...",
+  ],
+  [
+    "....kppkkqqk....",
+    "....kppkkqqk....",
+    "....kPPkkQQk....",
+    "....kbbkkvvk....",
+    "....kkkkkkkk....",
+  ],
+  [
+    "....kppk.kqqk...",
+    "....kppk.kqqk...",
+    "....kPPk.kQQk...",
+    "...kbbk...kvvk..",
+    "...kkkk...kkkk..",
+  ],
 ];
 
 const MATRIX: Record<Exclude<Dir, "left">, string[]> = {
@@ -152,17 +183,17 @@ const MATRIX: Record<Exclude<Dir, "left">, string[]> = {
   right: SIDE,
 };
 
-/** Per-frame vertical lift for each leg — a simple two-step contact cycle. */
-const FRAMES: { left: number; right: number; bob: number }[] = [
-  { left: 0, right: 0, bob: 0 },
-  { left: 2, right: 0, bob: -1 },
-  { left: 0, right: 0, bob: 0 },
-  { left: 0, right: 2, bob: -1 },
+/** Body rise and arm swing per frame. Arms lead opposite the legs. */
+const FRAMES: { bob: number; armL: number; armR: number }[] = [
+  { bob: 0, armL: 0, armR: 0 },
+  { bob: -1, armL: -1, armR: 1 },
+  { bob: 0, armL: 0, armR: 0 },
+  { bob: -1, armL: 1, armR: -1 },
 ];
 
 export const FRAME_COUNT = FRAMES.length;
 
-function renderFrame(rows: string[], frame: number, mirror: boolean) {
+function renderFrame(body: string[], frame: number, mirror: boolean) {
   const canvas = document.createElement("canvas");
   canvas.width = SPRITE_W;
   canvas.height = SPRITE_H;
@@ -171,21 +202,34 @@ function renderFrame(rows: string[], frame: number, mirror: boolean) {
   ctx.imageSmoothingEnabled = false;
 
   const f = FRAMES[frame];
+  const put = (x: number, y: number, ch: string) => {
+    const color = COLORS[ch];
+    if (!color) return;
+    ctx.fillStyle = color;
+    ctx.fillRect(mirror ? SPRITE_W - 1 - x : x, y, 1, 1);
+  };
 
-  for (let y = 0; y < rows.length; y++) {
-    const row = rows[y];
+  // Body rises on the passing frames; arms swing against each other.
+  for (let y = 0; y < body.length; y++) {
+    const row = body[y];
     for (let x = 0; x < SPRITE_W; x++) {
       const ch = row[x];
       if (!ch || ch === ".") continue;
-      const color = COLORS[ch];
-      if (!color) continue;
-
       let dy = f.bob;
-      if (LEFT_LEG.has(ch)) dy = -f.left;
-      else if (RIGHT_LEG.has(ch)) dy = -f.right;
+      if (LEFT_ARM.has(ch)) dy += f.armL;
+      else if (RIGHT_ARM.has(ch)) dy += f.armR;
+      put(x, y + dy, ch);
+    }
+  }
 
-      ctx.fillStyle = color;
-      ctx.fillRect(mirror ? SPRITE_W - 1 - x : x, y + dy, 1, 1);
+  // Feet stay on the ground — only the body bobs.
+  const legs = LEGS[frame];
+  for (let y = 0; y < legs.length; y++) {
+    const row = legs[y];
+    for (let x = 0; x < SPRITE_W; x++) {
+      const ch = row[x];
+      if (!ch || ch === ".") continue;
+      put(x, BODY_ROWS + y, ch);
     }
   }
 
@@ -236,4 +280,4 @@ export function drawCharacter(
 }
 
 /** Exposed so the sprite matrices can be checked outside the browser. */
-export const SPRITE_SHEETS = { DOWN, UP, SIDE, COLORS };
+export const SPRITE_SHEETS = { DOWN, UP, SIDE, LEGS, COLORS, FRAMES };
