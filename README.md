@@ -134,6 +134,12 @@ and every character must exist in the palette. A hand-typed matrix picks up
 non-ASCII lookalikes — a Cyrillic `о` for an ASCII `o` renders as a hole in the
 sprite and raises no error anywhere.
 
+Fountain geometry lives in `fountain.ts`, deliberately free of imports so it can
+be loaded and asserted outside the browser. The silhouette must stay wider than
+it is tall, widest at the bottom, with each bowl clearly wider than the stem
+beneath it. Built as a narrow shaft under a cap, it reads as something other
+than a fountain — hence the constraints being checked rather than eyeballed.
+
 The world renders client-side only. That is deliberate: the page's HTML still
 contains the full resume text for crawlers and link previews, with the game
 layered on top in the browser.

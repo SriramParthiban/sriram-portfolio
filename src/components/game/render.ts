@@ -1,4 +1,5 @@
 import { drawText, textWidth } from "./font";
+import { FOUNTAIN } from "./fountain";
 import {
   Building,
   IconKind,
@@ -364,6 +365,36 @@ export function drawWater(
 }
 
 /* ---------------------------------------------------- pre-rendered sprites */
+
+/**
+ * Fills an ellipse pixel by pixel, handing the shader the normalised offset
+ * from centre so it can light the form. Round shapes have to be rasterised
+ * this way — stacked rectangles read as a box no matter how they are shaded.
+ */
+function ellipseFill(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  shader: (nx: number, ny: number, d: number) => string | null,
+) {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
+    for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+      const nx = (x - cx) / rx;
+      const ny = (y - cy) / ry;
+      const d = nx * nx + ny * ny;
+      if (d > 1) continue;
+      const col = shader(nx, ny, d);
+      if (!col) continue;
+      ctx.fillStyle = col;
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+}
+
+const rgb = (c: RGB) => `rgb(${c[0]},${c[1]},${c[2]})`;
+
 
 function makeCanvas(w: number, h: number) {
   const c = document.createElement("canvas");
@@ -912,7 +943,7 @@ const propCache = new Map<PropKind, HTMLCanvasElement>();
 
 function makeProp(kind: PropKind): HTMLCanvasElement {
   const sizes: Record<PropKind, [number, number]> = {
-    fountain: [48, 56],
+    fountain: [48, 48],
     lamp: [16, 46],
     barrel: [16, 22],
     crate: [16, 18],
@@ -935,44 +966,71 @@ function makeProp(kind: PropKind): HTMLCanvasElement {
 
   switch (kind) {
     case "fountain": {
-      // Outer basin, drawn as courses of cut stone.
-      for (let x = 1; x < 47; x++) {
-        for (let y = 26; y < 52; y++) {
-          const inset = Math.abs(x - 24) / 23;
-          if (y > 46 && inset > 0.86) continue;
-          const block = Math.floor((x + (y > 38 ? 5 : 0)) / 9);
-          const joint = (x + (y > 38 ? 5 : 0)) % 9 === 0 || y === 38;
-          const col = joint ? [78, 74, 68] : pick(STONE, hash2(block, y > 38 ? 1 : 0));
-          const k = y > 46 ? 0.72 : 1;
-          ctx.fillStyle = `rgb(${Math.round(col[0] * k)},${Math.round(
-            col[1] * k,
-          )},${Math.round(col[2] * k)})`;
-          ctx.fillRect(x, y, 1, 1);
-        }
-      }
-      // Rim highlight and inner shadow
-      r(1, 26, 46, 2, "#c2b8a6");
-      r(1, 28, 46, 2, "rgba(0,0,0,0.28)");
+      // A tiered fountain: three round bowls, each much wider than the stem
+      // beneath it. Wide and low — a tall narrow column over a rectangular
+      // basin reads as something else entirely.
+      const { cx, tiers, stems, plinth } = FOUNTAIN;
+      const [top, middle, basin] = tiers;
 
-      // Water surface
-      for (let x = 4; x < 44; x++) {
-        for (let y = 30; y < 44; y++) {
-          const n = fbm(x * 0.3, y * 0.3);
-          const c = pick(WATER, n * 0.7 + 0.15);
-          ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
-          ctx.fillRect(x, y, 1, 1);
-        }
-      }
-      r(4, 30, 40, 2, "rgba(0,0,0,0.3)");
+      // Carved stone, lit from the upper left. `d` is 0 at the centre and 1
+      // at the rim, which is what gives each bowl its roundness.
+      const stone = (nx: number, ny: number, d: number, base = 0.55) => {
+        const lit = base + (-nx * 0.16 - ny * 0.24) + (1 - d) * 0.22;
+        const grain = hash2(Math.round(nx * 40), Math.round(ny * 40)) * 0.1;
+        return rgb(pick(STONE, Math.max(0, Math.min(0.999, lit + grain))));
+      };
 
-      // Central pedestal and upper bowl
-      r(20, 14, 8, 18, "#8a8378");
-      r(21, 14, 3, 18, "#a49c8e");
-      r(20, 30, 8, 2, "#6e675e");
-      r(14, 8, 20, 7, "#a49c8e");
-      r(14, 8, 20, 2, "#c2b8a6");
-      r(14, 13, 20, 2, "#6e675e");
-      r(16, 10, 16, 3, "#3f8fb4");
+      const pool = (nx: number, ny: number, d: number) => {
+        const depth = 0.25 + (1 - d) * 0.45 - ny * 0.18;
+        const ripple = fbm(nx * 9 + 20, ny * 9 + 20) * 0.22;
+        return rgb(pick(WATER, Math.max(0, Math.min(0.999, depth + ripple))));
+      };
+
+      // Plinth, offset down so the basin appears to have thickness.
+      ellipseFill(ctx, cx, plinth.cy, plinth.rx, plinth.ry, () =>
+        rgb(pick(STONE, 0.16)),
+      );
+
+      // Bottom basin
+      ellipseFill(ctx, cx, basin.cy, basin.rx, basin.ry, (nx, ny, d) =>
+        stone(nx, ny, d, 0.5),
+      );
+      ellipseFill(ctx, cx, basin.cy, basin.rx, basin.ry, (_nx, _ny, d) =>
+        d > 0.88 ? "rgba(255,255,255,0.16)" : null,
+      );
+      // Water held in it
+      ellipseFill(ctx, cx, basin.cy + 1, basin.rx - 5, basin.ry - 3.5, pool);
+      ellipseFill(
+        ctx,
+        cx,
+        basin.cy + 1,
+        basin.rx - 5,
+        basin.ry - 3.5,
+        (_nx, ny, d) => (d > 0.8 && ny < 0 ? "rgba(0,0,0,0.28)" : null),
+      );
+
+      // Stem up to the middle bowl, hidden behind it at the top.
+      r(cx - stems[1] / 2, middle.cy, stems[1], 12, rgb(pick(STONE, 0.3)));
+      r(cx - stems[1] / 2, middle.cy, 3, 12, rgb(pick(STONE, 0.55)));
+
+      // Middle bowl
+      ellipseFill(ctx, cx, middle.cy, middle.rx, middle.ry, (nx, ny, d) =>
+        stone(nx, ny, d, 0.55),
+      );
+      ellipseFill(ctx, cx, middle.cy + 0.5, middle.rx - 3.5, middle.ry - 2, pool);
+      ellipseFill(ctx, cx, middle.cy, middle.rx, middle.ry, (_nx, ny, d) =>
+        d > 0.86 && ny > 0 ? "rgba(0,0,0,0.25)" : null,
+      );
+
+      // Stem up to the top bowl
+      r(cx - stems[0] / 2, top.cy, stems[0], 8, rgb(pick(STONE, 0.34)));
+      r(cx - stems[0] / 2, top.cy, 2, 8, rgb(pick(STONE, 0.6)));
+
+      // Top bowl
+      ellipseFill(ctx, cx, top.cy, top.rx, top.ry, (nx, ny, d) =>
+        stone(nx, ny, d, 0.62),
+      );
+      ellipseFill(ctx, cx, top.cy + 0.4, top.rx - 2.5, top.ry - 1.4, pool);
       break;
     }
     case "lamp":
@@ -1063,7 +1121,7 @@ function makeProp(kind: PropKind): HTMLCanvasElement {
 }
 
 export const PROP_ANCHOR: Record<PropKind, { w: number; h: number }> = {
-  fountain: { w: 48, h: 56 },
+  fountain: { w: 48, h: 48 },
   lamp: { w: 16, h: 46 },
   barrel: { w: 16, h: 22 },
   crate: { w: 16, h: 18 },
@@ -1101,43 +1159,73 @@ export function drawProp(
   if (kind === "fountain") drawFountainWater(ctx, ox, oy, time);
 }
 
-/** The moving water, painted over the static basin each frame. */
+/**
+ * The moving water. Sheets spilling over each bowl's rim, not jets arcing out
+ * of the top — the arcs were half of what made the old shape read wrong.
+ */
 function drawFountainWater(
   ctx: CanvasRenderingContext2D,
   ox: number,
   oy: number,
   time: number,
 ) {
-  // Jets arcing out of the upper bowl into the basin.
-  for (let i = 0; i < 12; i++) {
-    const side = i % 2 === 0 ? -1 : 1;
-    const t = ((time * 0.9 + i * 0.083) % 1);
-    const x = ox + 24 + side * (4 + t * 15);
-    const y = oy + 13 + t * t * 20;
-    ctx.fillStyle = i % 3 === 0 ? "#bfe6f4" : "#7cc2dd";
-    ctx.fillRect(Math.round(x), Math.round(y), 2, 2);
+  const cx = ox + 24;
+
+  /** A falling sheet of water down one side of a bowl. */
+  const sheet = (x: number, top: number, bottom: number, w: number) => {
+    for (let y = top; y < bottom; y++) {
+      const shimmer = Math.sin(time * 10 + y * 0.85 + x * 0.5);
+      ctx.fillStyle =
+        shimmer > 0.35
+          ? "rgba(228,247,255,0.9)"
+          : shimmer > -0.4
+            ? "rgba(158,212,236,0.82)"
+            : "rgba(112,178,212,0.75)";
+      ctx.fillRect(x, oy + y, w, 1);
+    }
+    // Splash where it lands
+    const burst = Math.sin(time * 7 + x) > 0.4;
+    ctx.fillStyle = "rgba(236,250,255,0.8)";
+    ctx.fillRect(x - 1, oy + bottom, w + 2, 1);
+    if (burst) ctx.fillRect(x - 2, oy + bottom - 1, 1, 1);
+  };
+
+  // Bubbling crown in the top bowl
+  const pulse = Math.sin(time * 5);
+  ctx.fillStyle = "rgba(240,252,255,0.95)";
+  ctx.fillRect(cx - 1, oy + 9 - Math.round(pulse * 1.5), 2, 3);
+  ctx.fillStyle = "rgba(198,234,248,0.8)";
+  ctx.fillRect(cx - 4, oy + 11, 8, 1);
+  if (pulse > 0.6) {
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillRect(cx - 3, oy + 7, 1, 1);
+    ctx.fillRect(cx + 2, oy + 8, 1, 1);
   }
 
-  // Overflow lip
-  ctx.fillStyle = "rgba(190,230,244,0.5)";
-  ctx.fillRect(ox + 22, oy + 15, 4, 16);
+  // Top bowl spilling into the middle bowl
+  sheet(cx - 7, 14, 19, 2);
+  sheet(cx + 5, 14, 19, 2);
 
-  // Ripples on the basin surface
-  for (let i = 0; i < 5; i++) {
-    const phase = Math.sin(time * 1.8 + i * 1.7);
-    if (phase < 0.2) continue;
-    ctx.fillStyle = "rgba(200,238,250,0.42)";
-    const rx = ox + 7 + i * 8;
-    const ry = oy + 34 + ((i * 3) % 7);
-    ctx.fillRect(rx, ry, 5 + Math.round(phase * 3), 1);
+  // Middle bowl spilling into the basin
+  sheet(cx - 13, 24, 31, 2);
+  sheet(cx + 11, 24, 31, 2);
+
+  // Ripples across the basin surface
+  for (let i = 0; i < 7; i++) {
+    const phase = Math.sin(time * 2 + i * 1.4);
+    if (phase < 0.15) continue;
+    ctx.fillStyle = "rgba(206,240,252,0.4)";
+    const rx = cx - 15 + i * 5;
+    const ry = oy + 31 + ((i * 3) % 6);
+    ctx.fillRect(rx, ry, 4 + Math.round(phase * 3), 1);
   }
 
-  // Sparkle on the rim
-  const glint = Math.sin(time * 2.4);
-  if (glint > 0.7) {
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.fillRect(ox + 12, oy + 27, 3, 1);
-    ctx.fillRect(ox + 33, oy + 28, 2, 1);
+  // Glint travelling around the rim
+  const glint = Math.sin(time * 1.6);
+  if (glint > 0.5) {
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillRect(cx - 16, oy + 27, 4, 1);
+    ctx.fillRect(cx + 12, oy + 29, 3, 1);
   }
 }
 
