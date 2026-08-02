@@ -45,40 +45,42 @@ const pick = (ramp: RGB[], t: number) =>
 
 /* --------------------------------------------------------------- palettes */
 
+// Saturated and warm. The first pass was desaturated, which reads as washed
+// out no matter how much per-pixel detail sits underneath it.
 const GRASS: RGB[] = [
-  [58, 92, 46],
-  [68, 105, 52],
-  [78, 118, 58],
-  [88, 132, 64],
-  [99, 146, 71],
+  [52, 100, 36],
+  [68, 126, 44],
+  [86, 150, 52],
+  [106, 174, 62],
+  [128, 198, 76],
 ];
 const PATH: RGB[] = [
-  [122, 96, 66],
-  [136, 108, 75],
-  [150, 120, 84],
-  [162, 131, 93],
-  [173, 142, 102],
+  [150, 108, 62],
+  [174, 130, 78],
+  [196, 152, 94],
+  [214, 174, 112],
+  [230, 196, 134],
 ];
 const STONE: RGB[] = [
-  [110, 106, 98],
-  [126, 121, 112],
-  [142, 137, 127],
-  [156, 151, 141],
-  [170, 165, 155],
+  [128, 112, 94],
+  [150, 132, 110],
+  [172, 152, 128],
+  [190, 172, 148],
+  [208, 190, 166],
 ];
 const WATER: RGB[] = [
-  [32, 74, 104],
-  [38, 88, 120],
-  [45, 102, 136],
-  [54, 118, 152],
-  [66, 136, 168],
+  [36, 92, 132],
+  [44, 112, 156],
+  [56, 134, 178],
+  [72, 158, 198],
+  [96, 184, 218],
 ];
 const SAND: RGB[] = [
-  [176, 152, 112],
-  [190, 166, 124],
-  [203, 179, 136],
-  [214, 191, 148],
-  [224, 203, 160],
+  [196, 168, 116],
+  [212, 184, 132],
+  [224, 198, 148],
+  [234, 210, 162],
+  [242, 222, 178],
 ];
 
 export const PAL = {
@@ -154,14 +156,19 @@ function shade(t: number, px: number, py: number): RGB {
       return pick(STONE, n);
     }
     default: {
-      const n = fbm(px * 0.28, py * 0.28);
+      // Two scales of noise: broad clumps of lighter and darker growth, then
+      // fine variation inside them. Uniform noise alone looks like static —
+      // the clumping is what reads as grass.
+      const clump = smoothNoise(px * 0.055, py * 0.055);
+      const fine = fbm(px * 0.34, py * 0.34);
       const blade = hash2(px, py);
-      // Individual blades and dry patches, one pixel at a time.
-      if (blade > 0.972) return GRASS[4];
-      if (blade < 0.022) return GRASS[0];
-      // Faint horizontal banding reads as mown texture.
-      const band = ((py * 7 + px * 3) % 23) / 23;
-      return pick(GRASS, n * 0.82 + band * 0.18);
+
+      // Individual blades catching the light, and bare patches.
+      if (blade > 0.968) return GRASS[4];
+      if (blade > 0.94) return GRASS[3];
+      if (blade < 0.02) return GRASS[0];
+
+      return pick(GRASS, clump * 0.62 + fine * 0.38);
     }
   }
 }
@@ -204,7 +211,11 @@ export function buildGroundCanvas() {
 
       // Irregular fringe so terrain boundaries are organic, not straight
       // tile edges. This single step does most of the work of an autotiler.
-      const fringe = 1.2 + fbm(px * 0.55, py * 0.55) * 4.2;
+      // Two frequencies: broad lobes plus a fine ragged edge on top.
+      const fringe =
+        1.5 +
+        smoothNoise(px * 0.12, py * 0.12) * 4.5 +
+        fbm(px * 0.7, py * 0.7) * 2.5;
 
       for (const [dx, dy] of NEIGHBOURS) {
         const nt = baseTerrain(tx + dx, ty + dy);
@@ -647,6 +658,19 @@ function makeBuilding(b: Building) {
     r(wx, winY, winW, 3, "rgba(200,80,50,0.55)");
     // Reflection
     r(wx + 2, winY + 2, 4, 5, "rgba(255,255,255,0.22)");
+
+    // Painted shutters either side — the detail that turns a hole in a wall
+    // into a cottage window.
+    for (const side of [-1, 1]) {
+      const sx2 = side < 0 ? wx - 8 : wx + winW + 2;
+      r(sx2, winY - 2, 6, winH + 4, "#2f6b3a");
+      r(sx2, winY - 2, 6, 1, "#48926f");
+      r(sx2 + (side < 0 ? 5 : 0), winY - 2, 1, winH + 4, "#1e4a27");
+      for (let sl = 2; sl < winH + 1; sl += 4) {
+        r(sx2 + 1, winY - 2 + sl, 4, 1, "rgba(0,0,0,0.28)");
+        r(sx2 + 1, winY - 1 + sl, 4, 1, "#3d7f4b");
+      }
+    }
   }
 
   /* ---- door with frame, panels, step ---- */

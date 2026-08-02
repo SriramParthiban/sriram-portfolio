@@ -79,9 +79,9 @@ export const buildings: Building[] = [
     h: 5,
     doorX: 9,
     doorY: 9,
-    wall: "#6b5344",
-    roof: "#8c4a3a",
-    roofDark: "#6d382c",
+    wall: "#a97b4d",
+    roof: "#c04a30",
+    roofDark: "#8e3220",
     flair: "lantern",
   },
   {
@@ -97,9 +97,9 @@ export const buildings: Building[] = [
     h: 5,
     doorX: 23,
     doorY: 8,
-    wall: "#5d5a55",
-    roof: "#41545f",
-    roofDark: "#31414a",
+    wall: "#9c8b72",
+    roof: "#3f7f96",
+    roofDark: "#2b5c6e",
     flair: "smoke",
   },
   {
@@ -115,9 +115,9 @@ export const buildings: Building[] = [
     h: 5,
     doorX: 38,
     doorY: 10,
-    wall: "#5a4c48",
-    roof: "#7a3f2c",
-    roofDark: "#5c2f21",
+    wall: "#8f6f52",
+    roof: "#a8442a",
+    roofDark: "#7b2d19",
     flair: "forge",
   },
   {
@@ -133,9 +133,9 @@ export const buildings: Building[] = [
     h: 5,
     doorX: 8,
     doorY: 23,
-    wall: "#6a6154",
-    roof: "#4d5b43",
-    roofDark: "#3a4633",
+    wall: "#b09a72",
+    roof: "#5c8c3e",
+    roofDark: "#3f6828",
     flair: "banner",
   },
   {
@@ -151,9 +151,9 @@ export const buildings: Building[] = [
     h: 4,
     doorX: 21,
     doorY: 23,
-    wall: "#6d6250",
-    roof: "#8a6a34",
-    roofDark: "#6b5127",
+    wall: "#a9906a",
+    roof: "#d09a2e",
+    roofDark: "#a06f1c",
     flair: "sparkle",
   },
   {
@@ -169,9 +169,9 @@ export const buildings: Building[] = [
     h: 4,
     doorX: 35,
     doorY: 22,
-    wall: "#67564c",
-    roof: "#8d5340",
-    roofDark: "#6d3f31",
+    wall: "#9a7f66",
+    roof: "#c25f3c",
+    roofDark: "#924024",
     flair: "mail",
   },
 ];
@@ -180,8 +180,11 @@ type Rect = { x: number; y: number; w: number; h: number };
 
 const rects = (list: Rect[]) => list;
 
-/** Walkable stone plaza at the centre of the valley. */
-const plaza: Rect = { x: 18, y: 11, w: 12, h: 6 };
+/**
+ * Walkable stone plaza at the centre of the valley. Deliberately modest — at
+ * 12x6 it filled the whole viewport with flat stone and read as a car park.
+ */
+const plaza: Rect = { x: 20, y: 12, w: 9, h: 4 };
 
 /** Paths connecting every door to the plaza. */
 const paths = rects([
@@ -287,6 +290,29 @@ export const terrain: Terrain[] = (() => {
   // A fence around the meadow south-west, purely for texture.
   for (let x = 10; x < 18; x++) set(x, 29, Terrain.Fence);
 
+  // Clear small obstacles touching a walkway. A rock or bush half a tile off
+  // the path is invisible from a distance and just feels like being blocked
+  // by nothing. Trees stay — they read clearly as something to walk around.
+  const walkable = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return false;
+    const t = out[y * MAP_W + x];
+    return t === Terrain.Path || t === Terrain.Plaza;
+  };
+
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const t = out[y * MAP_W + x];
+      if (t !== Terrain.Rock && t !== Terrain.Bush) continue;
+      let touching = false;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (walkable(x + dx, y + dy)) touching = true;
+        }
+      }
+      if (touching) set(x, y, Terrain.Grass);
+    }
+  }
+
   return out;
 })();
 
@@ -313,13 +339,14 @@ export type Prop = { kind: PropKind; x: number; y: number };
  * reachability check has to run after any change here.
  */
 export const props: Prop[] = [
-  // Plaza furniture
-  { kind: "well", x: 27, y: 15 },
-  { kind: "bench", x: 19, y: 12 },
-  { kind: "bench", x: 28, y: 12 },
-  { kind: "lamp", x: 18, y: 11 },
+  // Plaza furniture. Rows 13-14 carry the main east-west route through the
+  // plaza, so nothing is placed on them — furniture there pinched the walk.
+  { kind: "well", x: 30, y: 15 },
+  { kind: "bench", x: 21, y: 15 },
+  { kind: "bench", x: 26, y: 15 },
+  { kind: "lamp", x: 19, y: 11 },
   { kind: "lamp", x: 29, y: 11 },
-  { kind: "lamp", x: 18, y: 16 },
+  { kind: "lamp", x: 19, y: 16 },
   { kind: "lamp", x: 29, y: 16 },
   // Workshop yard
   { kind: "crate", x: 19, y: 9 },

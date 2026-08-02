@@ -514,11 +514,11 @@ export default function GameWorld() {
             Entering <span className="text-ember">{nearDoor.name}</span>
           </p>
         )}
-        <p className="label hidden text-center !text-[10px] md:block">
+        <p className="label border-line hidden rounded-md border bg-black/65 px-4 py-2 text-center !text-[10px] backdrop-blur-sm md:block">
           WASD / arrows to walk · shift to run · walk into a door to enter · esc
           to leave a building
         </p>
-        <p className="label text-center !text-[10px] md:hidden">
+        <p className="label border-line rounded-md border bg-black/65 px-4 py-2 text-center !text-[10px] backdrop-blur-sm md:hidden">
           Drag anywhere to walk
         </p>
       </div>
