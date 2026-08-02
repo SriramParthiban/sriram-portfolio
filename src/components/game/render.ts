@@ -912,6 +912,7 @@ const propCache = new Map<PropKind, HTMLCanvasElement>();
 
 function makeProp(kind: PropKind): HTMLCanvasElement {
   const sizes: Record<PropKind, [number, number]> = {
+    fountain: [48, 56],
     lamp: [16, 46],
     barrel: [16, 22],
     crate: [16, 18],
@@ -933,6 +934,47 @@ function makeProp(kind: PropKind): HTMLCanvasElement {
   r(2, h - 4, w - 4, 3, "rgba(0,0,0,0.22)");
 
   switch (kind) {
+    case "fountain": {
+      // Outer basin, drawn as courses of cut stone.
+      for (let x = 1; x < 47; x++) {
+        for (let y = 26; y < 52; y++) {
+          const inset = Math.abs(x - 24) / 23;
+          if (y > 46 && inset > 0.86) continue;
+          const block = Math.floor((x + (y > 38 ? 5 : 0)) / 9);
+          const joint = (x + (y > 38 ? 5 : 0)) % 9 === 0 || y === 38;
+          const col = joint ? [78, 74, 68] : pick(STONE, hash2(block, y > 38 ? 1 : 0));
+          const k = y > 46 ? 0.72 : 1;
+          ctx.fillStyle = `rgb(${Math.round(col[0] * k)},${Math.round(
+            col[1] * k,
+          )},${Math.round(col[2] * k)})`;
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      // Rim highlight and inner shadow
+      r(1, 26, 46, 2, "#c2b8a6");
+      r(1, 28, 46, 2, "rgba(0,0,0,0.28)");
+
+      // Water surface
+      for (let x = 4; x < 44; x++) {
+        for (let y = 30; y < 44; y++) {
+          const n = fbm(x * 0.3, y * 0.3);
+          const c = pick(WATER, n * 0.7 + 0.15);
+          ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      r(4, 30, 40, 2, "rgba(0,0,0,0.3)");
+
+      // Central pedestal and upper bowl
+      r(20, 14, 8, 18, "#8a8378");
+      r(21, 14, 3, 18, "#a49c8e");
+      r(20, 30, 8, 2, "#6e675e");
+      r(14, 8, 20, 7, "#a49c8e");
+      r(14, 8, 20, 2, "#c2b8a6");
+      r(14, 13, 20, 2, "#6e675e");
+      r(16, 10, 16, 3, "#3f8fb4");
+      break;
+    }
     case "lamp":
       r(5, h - 6, 6, 4, "#4a4540");
       r(4, h - 4, 8, 2, "#38332f");
@@ -1021,6 +1063,7 @@ function makeProp(kind: PropKind): HTMLCanvasElement {
 }
 
 export const PROP_ANCHOR: Record<PropKind, { w: number; h: number }> = {
+  fountain: { w: 48, h: 56 },
   lamp: { w: 16, h: 46 },
   barrel: { w: 16, h: 22 },
   crate: { w: 16, h: 18 },
@@ -1030,11 +1073,18 @@ export const PROP_ANCHOR: Record<PropKind, { w: number; h: number }> = {
   well: { w: 32, h: 34 },
 };
 
+/** Tile depth of each prop's base, used to seat the sprite on the ground. */
+const PROP_FOOT: Partial<Record<PropKind, number>> = {
+  fountain: 3,
+  well: 2,
+};
+
 export function drawProp(
   ctx: CanvasRenderingContext2D,
   kind: PropKind,
   tx: number,
   ty: number,
+  time: number,
 ) {
   let sprite = propCache.get(kind);
   if (!sprite) {
@@ -1043,8 +1093,52 @@ export function drawProp(
   }
   const size = PROP_ANCHOR[kind];
   // Anchored so the sprite's feet land on the bottom of its tile footprint.
-  const footprintH = kind === "well" ? 2 : 1;
-  ctx.drawImage(sprite, tx * TILE, (ty + footprintH) * TILE - size.h);
+  const footprintH = PROP_FOOT[kind] ?? 1;
+  const ox = tx * TILE;
+  const oy = (ty + footprintH) * TILE - size.h;
+  ctx.drawImage(sprite, ox, oy);
+
+  if (kind === "fountain") drawFountainWater(ctx, ox, oy, time);
+}
+
+/** The moving water, painted over the static basin each frame. */
+function drawFountainWater(
+  ctx: CanvasRenderingContext2D,
+  ox: number,
+  oy: number,
+  time: number,
+) {
+  // Jets arcing out of the upper bowl into the basin.
+  for (let i = 0; i < 12; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const t = ((time * 0.9 + i * 0.083) % 1);
+    const x = ox + 24 + side * (4 + t * 15);
+    const y = oy + 13 + t * t * 20;
+    ctx.fillStyle = i % 3 === 0 ? "#bfe6f4" : "#7cc2dd";
+    ctx.fillRect(Math.round(x), Math.round(y), 2, 2);
+  }
+
+  // Overflow lip
+  ctx.fillStyle = "rgba(190,230,244,0.5)";
+  ctx.fillRect(ox + 22, oy + 15, 4, 16);
+
+  // Ripples on the basin surface
+  for (let i = 0; i < 5; i++) {
+    const phase = Math.sin(time * 1.8 + i * 1.7);
+    if (phase < 0.2) continue;
+    ctx.fillStyle = "rgba(200,238,250,0.42)";
+    const rx = ox + 7 + i * 8;
+    const ry = oy + 34 + ((i * 3) % 7);
+    ctx.fillRect(rx, ry, 5 + Math.round(phase * 3), 1);
+  }
+
+  // Sparkle on the rim
+  const glint = Math.sin(time * 2.4);
+  if (glint > 0.7) {
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillRect(ox + 12, oy + 27, 3, 1);
+    ctx.fillRect(ox + 33, oy + 28, 2, 1);
+  }
 }
 
 /* ----------------------------------------------------------------- colour */

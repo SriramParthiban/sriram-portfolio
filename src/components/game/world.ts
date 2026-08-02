@@ -1,7 +1,10 @@
 /**
- * World definition. Terrain is generated from feature rectangles rather than a
+ * World definition. Terrain is generated from feature shapes rather than a
  * hand-typed tile string — a 48x32 string is 1536 characters that all have to
  * line up, and one miscount silently shifts the whole map.
+ *
+ * The valley is a hub and spoke: a round plaza with a fountain at its centre,
+ * and six roads leading out, one to each building.
  */
 
 export const TILE = 16;
@@ -41,6 +44,8 @@ export type IconKind =
   | "trophy"
   | "mail";
 
+export type Point = { x: number; y: number };
+
 export type Building = {
   id: LocationId;
   name: string;
@@ -55,7 +60,7 @@ export type Building = {
   y: number;
   w: number;
   h: number;
-  /** Door tile, in tile coords. Standing on it warps inside. */
+  /** Door tile. Standing on it warps inside. Always the row below the roof. */
   doorX: number;
   doorY: number;
   wall: string;
@@ -63,7 +68,16 @@ export type Building = {
   roofDark: string;
   /** Ambient flourish drawn for this building only. */
   flair: "smoke" | "lantern" | "forge" | "banner" | "sparkle" | "mail";
+  /**
+   * The road from the plaza to this door, as waypoints. Southern buildings
+   * need the road to wrap around them — their doors face away from the hub.
+   */
+  road: Point[];
 };
+
+/** Centre of the plaza, and the point every road radiates from. */
+export const HUB = { x: 24, y: 16 };
+const PLAZA_R = 6.4;
 
 export const buildings: Building[] = [
   {
@@ -73,16 +87,22 @@ export const buildings: Building[] = [
     sign: "ARCHIVE",
     signSub: "WHO I AM",
     icon: "book",
-    x: 6,
-    y: 4,
+    x: 11,
+    y: 5,
     w: 7,
     h: 5,
-    doorX: 9,
-    doorY: 9,
+    doorX: 14,
+    doorY: 10,
     wall: "#a97b4d",
     roof: "#c04a30",
     roofDark: "#8e3220",
     flair: "lantern",
+    road: [
+      { x: 24, y: 16 },
+      { x: 18, y: 12 },
+      { x: 14, y: 12 },
+      { x: 14, y: 10 },
+    ],
   },
   {
     id: "workshop",
@@ -91,34 +111,22 @@ export const buildings: Building[] = [
     sign: "WORKSHOP",
     signSub: "EXPERIENCE",
     icon: "gear",
-    x: 20,
-    y: 3,
+    x: 30,
+    y: 5,
     w: 8,
     h: 5,
-    doorX: 23,
-    doorY: 8,
+    doorX: 33,
+    doorY: 10,
     wall: "#9c8b72",
     roof: "#3f7f96",
     roofDark: "#2b5c6e",
     flair: "smoke",
-  },
-  {
-    id: "foundry",
-    name: "The Foundry",
-    sub: "Capabilities",
-    sign: "FOUNDRY",
-    signSub: "SKILLS",
-    icon: "anvil",
-    x: 35,
-    y: 5,
-    w: 7,
-    h: 5,
-    doorX: 38,
-    doorY: 10,
-    wall: "#8f6f52",
-    roof: "#a8442a",
-    roofDark: "#7b2d19",
-    flair: "forge",
+    road: [
+      { x: 24, y: 16 },
+      { x: 30, y: 12 },
+      { x: 33, y: 12 },
+      { x: 33, y: 10 },
+    ],
   },
   {
     id: "gallery",
@@ -128,15 +136,47 @@ export const buildings: Building[] = [
     signSub: "PROJECTS",
     icon: "frame",
     x: 5,
-    y: 18,
+    y: 15,
     w: 8,
     h: 5,
     doorX: 8,
-    doorY: 23,
+    doorY: 20,
     wall: "#b09a72",
     roof: "#5c8c3e",
     roofDark: "#3f6828",
     flair: "banner",
+    road: [
+      { x: 24, y: 16 },
+      { x: 18, y: 16 },
+      { x: 14, y: 21 },
+      { x: 8, y: 21 },
+      { x: 8, y: 20 },
+    ],
+  },
+  {
+    id: "foundry",
+    name: "The Foundry",
+    sub: "Capabilities",
+    sign: "FOUNDRY",
+    signSub: "SKILLS",
+    icon: "anvil",
+    x: 36,
+    y: 15,
+    w: 7,
+    h: 5,
+    doorX: 39,
+    doorY: 20,
+    wall: "#8f6f52",
+    roof: "#a8442a",
+    roofDark: "#7b2d19",
+    flair: "forge",
+    road: [
+      { x: 24, y: 16 },
+      { x: 30, y: 16 },
+      { x: 34, y: 21 },
+      { x: 39, y: 21 },
+      { x: 39, y: 20 },
+    ],
   },
   {
     id: "trophy",
@@ -145,16 +185,23 @@ export const buildings: Building[] = [
     sign: "TROPHY HALL",
     signSub: "CERTIFICATIONS",
     icon: "trophy",
-    x: 19,
-    y: 19,
+    x: 13,
+    y: 22,
     w: 6,
     h: 4,
-    doorX: 21,
-    doorY: 23,
+    doorX: 15,
+    doorY: 26,
     wall: "#a9906a",
     roof: "#d09a2e",
     roofDark: "#a06f1c",
     flair: "sparkle",
+    road: [
+      { x: 24, y: 16 },
+      { x: 20, y: 21 },
+      { x: 20, y: 27 },
+      { x: 15, y: 27 },
+      { x: 15, y: 26 },
+    ],
   },
   {
     id: "post",
@@ -163,74 +210,51 @@ export const buildings: Building[] = [
     sign: "POST OFFICE",
     signSub: "CONTACT",
     icon: "mail",
-    x: 33,
-    y: 18,
+    x: 29,
+    y: 22,
     w: 6,
     h: 4,
-    doorX: 35,
-    doorY: 22,
+    doorX: 31,
+    doorY: 26,
     wall: "#9a7f66",
     roof: "#c25f3c",
     roofDark: "#924024",
     flair: "mail",
+    road: [
+      { x: 24, y: 16 },
+      { x: 27, y: 21 },
+      { x: 27, y: 27 },
+      { x: 31, y: 27 },
+      { x: 31, y: 26 },
+    ],
   },
 ];
 
 type Rect = { x: number; y: number; w: number; h: number };
 
-const rects = (list: Rect[]) => list;
-
-/**
- * Walkable stone plaza at the centre of the valley. Deliberately modest — at
- * 12x6 it filled the whole viewport with flat stone and read as a car park.
- */
-const plaza: Rect = { x: 20, y: 12, w: 9, h: 4 };
-
-/** Paths connecting every door to the plaza. */
-const paths = rects([
-  // Plaza spine, east-west
-  { x: 4, y: 13, w: 40, h: 2 },
-  // Plaza spine, north-south
-  { x: 23, y: 8, w: 2, h: 18 },
-  // Up to Archive door
-  { x: 9, y: 9, w: 2, h: 5 },
-  // Up to Foundry door
-  { x: 38, y: 10, w: 2, h: 4 },
-  // Down to Gallery door
-  { x: 8, y: 15, w: 2, h: 9 },
-  // Down to Trophy Hall door
-  { x: 21, y: 15, w: 2, h: 9 },
-  // Down to Post Office door
-  { x: 35, y: 15, w: 2, h: 8 },
-  // Southern path toward the pond
-  { x: 24, y: 25, w: 14, h: 2 },
-  // Spur up to the Post Office. Its northern path is covered by the building
-  // itself, so without this the door is reached by one tile of shore.
-  { x: 35, y: 22, w: 1, h: 3 },
-]);
-
-const forests = rects([
+const forests: Rect[] = [
   { x: 0, y: 0, w: MAP_W, h: 3 },
   { x: 0, y: 0, w: 4, h: MAP_H },
   { x: MAP_W - 4, y: 0, w: 4, h: MAP_H },
   { x: 0, y: MAP_H - 3, w: MAP_W, h: 3 },
-  { x: 14, y: 4, w: 4, h: 6 },
-  { x: 29, y: 4, w: 4, h: 5 },
-  { x: 14, y: 19, w: 3, h: 6 },
-  { x: 27, y: 19, w: 4, h: 5 },
-]);
+  { x: 4, y: 4, w: 6, h: 7 },
+  { x: 20, y: 3, w: 4, h: 5 },
+  { x: 39, y: 4, w: 5, h: 7 },
+  { x: 4, y: 23, w: 7, h: 5 },
+  { x: 22, y: 22, w: 4, h: 4 },
+  { x: 42, y: 12, w: 3, h: 8 },
+];
 
-const meadows = rects([
-  { x: 5, y: 11, w: 8, h: 2 },
-  { x: 32, y: 12, w: 6, h: 2 },
-  { x: 10, y: 26, w: 8, h: 3 },
-]);
+const meadows: Rect[] = [
+  { x: 18, y: 8, w: 5, h: 3 },
+  { x: 31, y: 13, w: 4, h: 2 },
+  { x: 9, y: 12, w: 6, h: 2 },
+  { x: 21, y: 28, w: 9, h: 2 },
+  { x: 34, y: 12, w: 3, h: 2 },
+];
 
-/**
- * Pond, as a centre plus radii so the shore reads as a curve. rx is kept at 5
- * so the water stops short of the Post Office approach at x=35.
- */
-const pond = { cx: 40, cy: 26, rx: 5, ry: 4 };
+/** Pond, tucked into the south-east away from every road. */
+const pond = { cx: 41, cy: 27, rx: 4, ry: 3 };
 
 const inRect = (x: number, y: number, r: Rect) =>
   x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
@@ -246,6 +270,86 @@ function ellipse(x: number, y: number, e: typeof pond, grow = 0) {
   const dy = (y - e.cy) / (e.ry + grow);
   return dx * dx + dy * dy <= 1;
 }
+
+const distToHub = (x: number, y: number) =>
+  Math.hypot(x - HUB.x, y - HUB.y);
+
+/* --------------------------------------------------------------- scenery */
+
+export type PropKind =
+  | "fountain"
+  | "lamp"
+  | "barrel"
+  | "crate"
+  | "pot"
+  | "bench"
+  | "stump"
+  | "well";
+
+export type Prop = { kind: PropKind; x: number; y: number };
+
+/**
+ * Placed by hand. All of these collide, so the reachability check has to run
+ * after any change here.
+ */
+export const props: Prop[] = [
+  // The fountain sits dead centre; the plaza ring flows around it.
+  { kind: "fountain", x: 23, y: 15 },
+
+  // Plaza ring: lamps between the road mouths, benches facing the water.
+  { kind: "lamp", x: 20, y: 13 },
+  { kind: "lamp", x: 28, y: 13 },
+  { kind: "lamp", x: 20, y: 19 },
+  { kind: "lamp", x: 28, y: 19 },
+  { kind: "bench", x: 22, y: 19 },
+  { kind: "bench", x: 25, y: 12 },
+
+  // Archive garden
+  { kind: "pot", x: 10, y: 10 },
+  { kind: "pot", x: 18, y: 10 },
+  { kind: "lamp", x: 12, y: 12 },
+
+  // Workshop yard
+  { kind: "crate", x: 29, y: 9 },
+  { kind: "barrel", x: 38, y: 9 },
+  { kind: "crate", x: 38, y: 8 },
+
+  // Gallery frontage
+  { kind: "lamp", x: 4, y: 21 },
+  { kind: "pot", x: 12, y: 20 },
+  { kind: "bench", x: 11, y: 23 },
+
+  // Foundry yard
+  { kind: "barrel", x: 35, y: 20 },
+  { kind: "barrel", x: 43, y: 20 },
+  { kind: "stump", x: 35, y: 14 },
+
+  // Trophy Hall
+  { kind: "lamp", x: 12, y: 27 },
+  { kind: "pot", x: 19, y: 26 },
+
+  // Post Office
+  { kind: "crate", x: 26, y: 27 },
+  { kind: "lamp", x: 35, y: 26 },
+  { kind: "well", x: 34, y: 17 },
+
+  // Pond side
+  { kind: "stump", x: 36, y: 24 },
+];
+
+/** Footprint of each prop in tiles, for collision. */
+export const PROP_SIZE: Record<PropKind, { w: number; h: number }> = {
+  fountain: { w: 3, h: 3 },
+  lamp: { w: 1, h: 1 },
+  barrel: { w: 1, h: 1 },
+  crate: { w: 1, h: 1 },
+  pot: { w: 1, h: 1 },
+  bench: { w: 2, h: 1 },
+  stump: { w: 1, h: 1 },
+  well: { w: 2, h: 2 },
+};
+
+/* --------------------------------------------------------------- terrain */
 
 export const terrain: Terrain[] = (() => {
   const out = new Array<Terrain>(MAP_W * MAP_H).fill(Terrain.Grass);
@@ -264,31 +368,56 @@ export const terrain: Terrain[] = (() => {
         set(x, y, h > 0.22 ? Terrain.Tree : h > 0.12 ? Terrain.Bush : Terrain.Grass);
       }
 
-      if (meadows.some((r) => inRect(x, y, r)) && h > 0.45) {
+      if (meadows.some((r) => inRect(x, y, r)) && h > 0.4) {
         set(x, y, Terrain.Flowers);
       }
 
-      // Scattered rocks on open grass.
-      if (out[y * MAP_W + x] === Terrain.Grass && h > 0.965) {
+      if (out[y * MAP_W + x] === Terrain.Grass && h > 0.972) {
         set(x, y, Terrain.Rock);
       }
 
-      // Pond with a sand shore.
       if (ellipse(x, y, pond, 1)) set(x, y, Terrain.Sand);
       if (ellipse(x, y, pond)) set(x, y, Terrain.Water);
     }
   }
 
-  // Paths and plaza carve through everything above.
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      if (paths.some((r) => inRect(x, y, r))) set(x, y, Terrain.Path);
-      if (inRect(x, y, plaza)) set(x, y, Terrain.Plaza);
+  // Roads carve through everything above. A 2x2 brush along each segment
+  // gives a two-tile road, wide enough to walk without feeling like a corridor.
+  const brush = (x: number, y: number) => {
+    set(x, y, Terrain.Path);
+    set(x + 1, y, Terrain.Path);
+    set(x, y + 1, Terrain.Path);
+    set(x + 1, y + 1, Terrain.Path);
+  };
+
+  const segment = (a: Point, b: Point) => {
+    const steps = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y));
+    if (steps === 0) {
+      brush(a.x, a.y);
+      return;
+    }
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      brush(Math.round(a.x + (b.x - a.x) * t), Math.round(a.y + (b.y - a.y) * t));
+    }
+  };
+
+  for (const b of buildings) {
+    for (let i = 0; i < b.road.length - 1; i++) {
+      segment(b.road[i], b.road[i + 1]);
     }
   }
 
-  // A fence around the meadow south-west, purely for texture.
-  for (let x = 10; x < 18; x++) set(x, 29, Terrain.Fence);
+  // The round plaza goes on top of the road ends, so the hub reads as one
+  // paved circle with six roads leaving it.
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (distToHub(x, y) <= PLAZA_R) set(x, y, Terrain.Plaza);
+    }
+  }
+
+  // A fence line along the south meadow, purely for texture.
+  for (let x = 21; x < 30; x++) set(x, 30, Terrain.Fence);
 
   // Clear small obstacles touching a walkway. A rock or bush half a tile off
   // the path is invisible from a distance and just feels like being blocked
@@ -321,72 +450,6 @@ export const terrainAt = (x: number, y: number): Terrain => {
   return terrain[y * MAP_W + x];
 };
 
-/* --------------------------------------------------------------- scenery */
-
-export type PropKind =
-  | "lamp"
-  | "barrel"
-  | "crate"
-  | "pot"
-  | "bench"
-  | "stump"
-  | "well";
-
-export type Prop = { kind: PropKind; x: number; y: number };
-
-/**
- * Placed by hand off the walkable paths. All of these collide, so the
- * reachability check has to run after any change here.
- */
-export const props: Prop[] = [
-  // Plaza furniture. Rows 13-14 carry the main east-west route through the
-  // plaza, so nothing is placed on them — furniture there pinched the walk.
-  { kind: "well", x: 30, y: 15 },
-  { kind: "bench", x: 21, y: 15 },
-  { kind: "bench", x: 26, y: 15 },
-  { kind: "lamp", x: 19, y: 11 },
-  { kind: "lamp", x: 29, y: 11 },
-  { kind: "lamp", x: 19, y: 16 },
-  { kind: "lamp", x: 29, y: 16 },
-  // Workshop yard
-  { kind: "crate", x: 19, y: 9 },
-  { kind: "barrel", x: 27, y: 9 },
-  { kind: "crate", x: 28, y: 10 },
-  // Foundry yard
-  { kind: "barrel", x: 34, y: 11 },
-  { kind: "barrel", x: 42, y: 10 },
-  { kind: "stump", x: 33, y: 8 },
-  // Archive garden
-  { kind: "pot", x: 5, y: 10 },
-  { kind: "pot", x: 13, y: 10 },
-  { kind: "lamp", x: 11, y: 12 },
-  // Gallery frontage
-  { kind: "lamp", x: 5, y: 24 },
-  { kind: "pot", x: 12, y: 24 },
-  // Trophy Hall
-  { kind: "lamp", x: 18, y: 24 },
-  { kind: "bench", x: 25, y: 22 },
-  // Post Office
-  { kind: "crate", x: 32, y: 23 },
-  { kind: "lamp", x: 39, y: 21 },
-  // Pond side
-  { kind: "stump", x: 31, y: 27 },
-  // Keep clear of 34,24 — that single sand tile is the only approach to the
-  // Post Office door, since the building itself covers its northern path.
-  { kind: "bench", x: 29, y: 24 },
-];
-
-/** Footprint of each prop in tiles, for collision. */
-export const PROP_SIZE: Record<PropKind, { w: number; h: number }> = {
-  lamp: { w: 1, h: 1 },
-  barrel: { w: 1, h: 1 },
-  crate: { w: 1, h: 1 },
-  pot: { w: 1, h: 1 },
-  bench: { w: 2, h: 1 },
-  stump: { w: 1, h: 1 },
-  well: { w: 2, h: 2 },
-};
-
 const SOLID = new Set<Terrain>([
   Terrain.Tree,
   Terrain.Water,
@@ -395,29 +458,29 @@ const SOLID = new Set<Terrain>([
   Terrain.Fence,
 ]);
 
-/** Collision grid: terrain plus building footprints, minus doorways. */
+/** Collision grid: terrain plus building and prop footprints, minus doorways. */
 export const solid: boolean[] = (() => {
   const out = new Array<boolean>(MAP_W * MAP_H).fill(false);
 
   for (let i = 0; i < terrain.length; i++) out[i] = SOLID.has(terrain[i]);
 
-  for (const b of buildings) {
-    for (let y = b.y; y < b.y + b.h; y++) {
-      for (let x = b.x; x < b.x + b.w; x++) {
+  const fill = (x0: number, y0: number, w: number, h: number) => {
+    for (let y = y0; y < y0 + h; y++) {
+      for (let x = x0; x < x0 + w; x++) {
         if (x >= 0 && y >= 0 && x < MAP_W && y < MAP_H) out[y * MAP_W + x] = true;
       }
     }
+  };
+
+  for (const b of buildings) {
+    fill(b.x, b.y, b.w, b.h);
     // The door sits on the row below the footprint and must stay walkable.
     out[b.doorY * MAP_W + b.doorX] = false;
   }
 
   for (const p of props) {
     const size = PROP_SIZE[p.kind];
-    for (let y = p.y; y < p.y + size.h; y++) {
-      for (let x = p.x; x < p.x + size.w; x++) {
-        if (x >= 0 && y >= 0 && x < MAP_W && y < MAP_H) out[y * MAP_W + x] = true;
-      }
-    }
+    fill(p.x, p.y, size.w, size.h);
   }
 
   return out;
@@ -436,18 +499,20 @@ export function doorAt(tx: number, ty: number): Building | null {
   return null;
 }
 
-/** Player spawn, in world pixels — middle of the plaza. */
+/** Player spawn, in world pixels — on the plaza, just south of the fountain. */
 export const SPAWN = {
-  x: (plaza.x + plaza.w / 2) * TILE,
-  y: (plaza.y + plaza.h / 2) * TILE,
+  x: HUB.x * TILE + TILE / 2,
+  y: (HUB.y + 4) * TILE + TILE - 2,
 };
 
 /** Named regions, shown in the HUD as you walk around. */
 export const regions: { name: string; r: Rect }[] = [
-  { name: "Town Plaza", r: plaza },
-  { name: "Still Pond", r: { x: 33, y: 21, w: 14, h: 10 } },
-  { name: "North Road", r: { x: 4, y: 3, w: 40, h: 8 } },
-  { name: "South Meadow", r: { x: 4, y: 17, w: 40, h: 12 } },
+  { name: "Fountain Square", r: { x: 18, y: 10, w: 13, h: 13 } },
+  { name: "North Road", r: { x: 4, y: 3, w: 40, h: 7 } },
+  { name: "Still Pond", r: { x: 34, y: 23, w: 13, h: 8 } },
+  { name: "West Green", r: { x: 4, y: 10, w: 14, h: 11 } },
+  { name: "East Green", r: { x: 31, y: 10, w: 13, h: 11 } },
+  { name: "South Meadow", r: { x: 4, y: 21, w: 30, h: 10 } },
 ];
 
 export function regionAt(tx: number, ty: number) {

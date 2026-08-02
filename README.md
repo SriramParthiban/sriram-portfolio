@@ -108,17 +108,31 @@ Borrowed from how Stardew Valley builds a map:
 Every building carries a hanging sign with its name, what's inside, and a
 pictogram, so you know where you're going before you walk in.
 
-Terrain is generated from feature rectangles in `world.ts` rather than a
-hand-typed tile string — a 48×32 string is 1536 characters that all have to line
-up, and one miscount silently shifts the whole map.
+The valley is a hub and spoke: a round plaza with a fountain at its centre and
+six roads leading out, one to each building. Each road is a polyline in
+`world.ts`, rasterised with a 2×2 brush. Southern buildings need their road to
+wrap around them, because every door faces south — away from the hub.
+
+The character is a hand-authored pixel matrix (16×26, four directions), not a
+composition of rectangles. Rectangles cannot describe a hairline, a cheekbone or
+an eye, which is why the first attempt read as a mannequin.
+
+Terrain is generated from feature shapes in `world.ts` rather than a hand-typed
+tile string — a 48×32 string is 1536 characters that all have to line up, and
+one miscount silently shifts the whole map.
 
 ### Changing the map
 
-Buildings and props all collide, so moving one can wall off a door — the Post
-Office is reached by a single spur because its own footprint covers its northern
-path. After editing `world.ts`, re-run the reachability check: flood fill from
-spawn and assert every door is still reachable, no footprints overlap, and no
-prop is sitting on a path or in the water.
+Buildings and props all collide, so moving one can wall off a door. After
+editing `world.ts`, re-run the reachability check: flood fill from spawn and
+assert every door is still reachable, no footprints overlap, and no prop is
+sitting on a road or in the water. Roads are two tiles wide, so a prop that
+looks clear of the centre line can still be standing in the road.
+
+The sprite matrices need checking too: every row must be exactly 16 characters
+and every character must exist in the palette. A hand-typed matrix picks up
+non-ASCII lookalikes — a Cyrillic `о` for an ASCII `o` renders as a hole in the
+sprite and raises no error anywhere.
 
 The world renders client-side only. That is deliberate: the page's HTML still
 contains the full resume text for crawlers and link previews, with the game

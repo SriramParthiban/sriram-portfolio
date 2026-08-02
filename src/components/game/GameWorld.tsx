@@ -406,7 +406,7 @@ export default function GameWorld() {
         }
         items.push({
           sort: (p.y + PROP_SIZE[p.kind].h) * TILE,
-          draw: () => drawProp(ctx, p.kind, p.x, p.y),
+          draw: () => drawProp(ctx, p.kind, p.x, p.y, elapsed),
         });
       }
 

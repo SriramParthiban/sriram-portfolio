@@ -1,36 +1,191 @@
 /**
- * The character, drawn from pixel-aligned rectangles rather than a bitmap.
- * Stardew's farmer is 16x32 — a tile and a half tall — so the head overlaps
- * the tile above and the world reads as having depth. Same proportions here.
+ * The character, hand-authored as pixel matrices.
+ *
+ * The first version was assembled from rectangles, which is why it read as a
+ * mannequin — rectangles cannot describe a hairline, a cheekbone or an eye.
+ * Every pixel here is placed deliberately, the way a sprite actually gets made.
+ *
+ * 16 wide x 26 tall, so the head overlaps the tile above at 16px tiles.
  */
 
 export type Dir = "down" | "up" | "left" | "right";
 
-const C = {
-  hair: "#3a2a22",
-  hairLight: "#4d382c",
-  skin: "#e8b98c",
-  skinShade: "#cf9d73",
-  shirt: "#e2542c",
-  shirtShade: "#b8401f",
-  pants: "#3c4a63",
-  boot: "#4a3729",
-  eye: "#22303f",
-  outline: "rgba(0,0,0,0.28)",
-} as const;
+const COLORS: Record<string, string> = {
+  o: "#17120e", // outline
+  h: "#432814", // hair shadow
+  H: "#6b401f", // hair mid
+  L: "#96602f", // hair highlight
+  s: "#f5c79b", // skin
+  S: "#d19a6b", // skin shade
+  w: "#ffffff", // eye white
+  e: "#263449", // pupil
+  c: "#e2542c", // shirt
+  C: "#f5794c", // shirt lit
+  d: "#a83c18", // shirt shadow
+  p: "#3d4f74", // left trouser
+  P: "#2a3854", // left trouser shade
+  q: "#3d4f74", // right trouser
+  Q: "#2a3854", // right trouser shade
+  b: "#4a3020", // left boot
+  v: "#4a3020", // right boot
+};
+
+/** Pixels belonging to each leg, so the walk cycle can lift them separately. */
+const LEFT_LEG = new Set(["p", "P", "b"]);
+const RIGHT_LEG = new Set(["q", "Q", "v"]);
 
 export const SPRITE_W = 16;
-export const SPRITE_H = 24;
+export const SPRITE_H = 26;
 
-type Frame = { legLift: [number, number]; bob: number; armSwing: number };
-
-// Four-frame cycle: contact, pass, contact, pass — legs opposite on 1 and 3.
-const FRAMES: Frame[] = [
-  { legLift: [0, 0], bob: 0, armSwing: 0 },
-  { legLift: [2, 0], bob: -1, armSwing: 1 },
-  { legLift: [0, 0], bob: 0, armSwing: 0 },
-  { legLift: [0, 2], bob: -1, armSwing: -1 },
+const DOWN = [
+  ".....oooooo.....",
+  "...oohhhhhhoo...",
+  "..ohhhhhhhhhho..",
+  ".ohhhHHHHHHhhho.",
+  ".ohhHHLLLLHHhho.",
+  ".ohHHLLLLLLHHho.",
+  ".ohHHHHHHHHHHho.",
+  ".ohhssssssssHho.",
+  ".ohssssssssssho.",
+  ".ohswesssswesho.",
+  ".ohswesssswesho.",
+  ".ohsSssssssSsho.",
+  ".ohssssSSssssho.",
+  "..ohssssssssho..",
+  "...ooSSSSSSoo...",
+  ".occCCCCCCCCcco.",
+  "oscCCCCCCCCCCcso",
+  "oscCCCCCCCCCCcso",
+  "osccCCCCCCCCccso",
+  ".osccccccccccso.",
+  ".oddddddddddddo.",
+  "...opppo.oqqqo..",
+  "...opppo.oqqqo..",
+  "...oPPPo.oQQQo..",
+  "...obbbo.ovvvo..",
+  "...ooooo.ooooo..",
 ];
+
+const UP = [
+  ".....oooooo.....",
+  "...oohhhhhhoo...",
+  "..ohhhhhhhhhho..",
+  ".ohhhHHHHHHhhho.",
+  ".ohhHHLLLLHHhho.",
+  ".ohHHLLLLLLHHho.",
+  ".ohHHHHHHHHHHho.",
+  ".ohhHHHHHHHHhho.",
+  ".ohhhHHHHHHhhho.",
+  ".ohhhhHHHHhhhho.",
+  ".ohhhhhhhhhhhho.",
+  ".ohhhhhhhhhhhho.",
+  ".ohhhhhhhhhhhho.",
+  "..ohhhhhhhhhho..",
+  "...ooSSSSSSoo...",
+  ".occCCCCCCCCcco.",
+  "oscCCCCCCCCCCcso",
+  "oscCCCCCCCCCCcso",
+  "osccCCCCCCCCccso",
+  ".osccccccccccso.",
+  ".oddddddddddddo.",
+  "...opppo.oqqqo..",
+  "...opppo.oqqqo..",
+  "...oPPPo.oQQQo..",
+  "...obbbo.ovvvo..",
+  "...ooooo.ooooo..",
+];
+
+/** Right-facing profile. Left is drawn mirrored from this. */
+const SIDE = [
+  ".....oooooo.....",
+  "...oohhhhhhoo...",
+  "..ohhhhhhhhhho..",
+  ".ohhhHHHHHHhhho.",
+  ".ohhHHLLLLLHHho.",
+  ".ohhHHLLLLLLHho.",
+  ".ohhHHHHHHHHHho.",
+  ".ohhhhssssssSho.",
+  ".ohhhsssssssSho.",
+  ".ohhhswesssssho.",
+  ".ohhhswesssssho.",
+  ".ohhhsssssssSho.",
+  ".ohhssssssSSsho.",
+  "..ohsssssssssho.",
+  "...ooSSSSSSoo...",
+  ".occCCCCCCCCcco.",
+  ".occCCCCCCCCcso.",
+  ".occCCCCCCCCcso.",
+  ".occCCCCCCCCcso.",
+  ".occcccccccccso.",
+  ".oddddddddddddo.",
+  "....opppoqqqo...",
+  "....opppoqqqo...",
+  "....oPPPoQQQo...",
+  "....obbbovvvo...",
+  "....ooooooooo...",
+];
+
+const MATRIX: Record<Exclude<Dir, "left">, string[]> = {
+  down: DOWN,
+  up: UP,
+  right: SIDE,
+};
+
+/** Per-frame vertical lift for each leg — a simple two-step contact cycle. */
+const FRAMES: { left: number; right: number; bob: number }[] = [
+  { left: 0, right: 0, bob: 0 },
+  { left: 2, right: 0, bob: -1 },
+  { left: 0, right: 0, bob: 0 },
+  { left: 0, right: 2, bob: -1 },
+];
+
+export const FRAME_COUNT = FRAMES.length;
+
+function renderFrame(rows: string[], frame: number, mirror: boolean) {
+  const canvas = document.createElement("canvas");
+  canvas.width = SPRITE_W;
+  canvas.height = SPRITE_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  ctx.imageSmoothingEnabled = false;
+
+  const f = FRAMES[frame];
+
+  for (let y = 0; y < rows.length; y++) {
+    const row = rows[y];
+    for (let x = 0; x < SPRITE_W; x++) {
+      const ch = row[x];
+      if (!ch || ch === ".") continue;
+      const color = COLORS[ch];
+      if (!color) continue;
+
+      let dy = f.bob;
+      if (LEFT_LEG.has(ch)) dy = -f.left;
+      else if (RIGHT_LEG.has(ch)) dy = -f.right;
+
+      ctx.fillStyle = color;
+      ctx.fillRect(mirror ? SPRITE_W - 1 - x : x, y + dy, 1, 1);
+    }
+  }
+
+  return canvas;
+}
+
+let cache: Record<Dir, HTMLCanvasElement[]> | null = null;
+
+function frames(): Record<Dir, HTMLCanvasElement[]> {
+  if (cache) return cache;
+  const build = (rows: string[], mirror = false) =>
+    FRAMES.map((_, i) => renderFrame(rows, i, mirror));
+
+  cache = {
+    down: build(MATRIX.down),
+    up: build(MATRIX.up),
+    right: build(MATRIX.right),
+    left: build(MATRIX.right, true),
+  };
+  return cache;
+}
 
 /**
  * @param x  feet centre, in world pixels
@@ -45,84 +200,19 @@ export function drawCharacter(
   moving: boolean,
   time: number,
 ) {
-  const f = moving ? FRAMES[frameIndex % 4] : FRAMES[0];
-  // Idle breathing keeps the character alive when standing still.
-  const idle = moving ? 0 : Math.sin(time * 2.4) > 0.6 ? 1 : 0;
+  // Standing still, breathe on a slow cycle rather than freezing solid.
+  const idle = moving ? 0 : Math.sin(time * 2.2) > 0.75 ? 1 : 0;
+  const frame = moving ? frameIndex % FRAME_COUNT : 0;
 
-  const ox = Math.round(x) - SPRITE_W / 2;
-  const oy = Math.round(y) - SPRITE_H + f.bob + idle;
+  const px = Math.round(x);
+  const py = Math.round(y);
 
-  const r = (rx: number, ry: number, rw: number, rh: number, color: string) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(ox + rx, oy + ry, rw, rh);
-  };
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillRect(px - 6, py - 3, 12, 4);
+  ctx.fillRect(px - 4, py - 4, 8, 1);
 
-  // Contact shadow, always on the ground plane
-  ctx.fillStyle = "rgba(0,0,0,0.25)";
-  ctx.fillRect(Math.round(x) - 6, Math.round(y) - 3, 12, 4);
-
-  const flip = dir === "left";
-  if (flip) {
-    ctx.save();
-    ctx.translate(Math.round(x) * 2, 0);
-    ctx.scale(-1, 1);
-  }
-
-  const side = dir === "left" || dir === "right";
-
-  // --- legs + boots ---
-  const [liftA, liftB] = f.legLift;
-  if (side) {
-    r(5, 19 - liftA, 3, 4 + liftA, C.pants);
-    r(8, 19 - liftB, 3, 4 + liftB, C.pants);
-    r(5, 22, 4, 2, C.boot);
-    r(8, 22, 4, 2, C.boot);
-  } else {
-    r(4, 19 - liftA, 3, 4 + liftA, C.pants);
-    r(9, 19 - liftB, 3, 4 + liftB, C.pants);
-    r(4, 22, 3, 2, C.boot);
-    r(9, 22, 3, 2, C.boot);
-  }
-
-  // --- torso ---
-  if (side) {
-    r(5, 12, 7, 8, C.shirt);
-    r(5, 12, 2, 8, C.shirtShade);
-  } else {
-    r(4, 12, 8, 8, C.shirt);
-    r(4, 17, 8, 3, C.shirtShade);
-  }
-
-  // --- arms ---
-  const swing = f.armSwing;
-  if (side) {
-    r(7, 13 + swing, 3, 6, C.skin);
-  } else {
-    r(2, 13 + swing, 2, 6, C.skin);
-    r(12, 13 - swing, 2, 6, C.skin);
-  }
-
-  // --- head ---
-  if (dir === "up") {
-    // Back of the head: all hair, no face.
-    r(3, 1, 10, 11, C.hair);
-    r(4, 1, 8, 3, C.hairLight);
-  } else if (side) {
-    r(4, 1, 9, 8, C.hair);
-    r(6, 4, 7, 8, C.skin);
-    r(6, 10, 7, 2, C.skinShade);
-    r(4, 1, 6, 6, C.hair);
-    r(10, 7, 2, 2, C.eye);
-  } else {
-    r(3, 1, 10, 8, C.hair);
-    r(4, 4, 8, 8, C.skin);
-    r(4, 10, 8, 2, C.skinShade);
-    r(3, 1, 10, 4, C.hair);
-    r(3, 4, 2, 3, C.hair);
-    r(11, 4, 2, 3, C.hair);
-    r(5, 7, 2, 2, C.eye);
-    r(9, 7, 2, 2, C.eye);
-  }
-
-  if (flip) ctx.restore();
+  ctx.drawImage(frames()[dir][frame], px - SPRITE_W / 2, py - SPRITE_H + idle);
 }
+
+/** Exposed so the sprite matrices can be checked outside the browser. */
+export const SPRITE_SHEETS = { DOWN, UP, SIDE, COLORS };
