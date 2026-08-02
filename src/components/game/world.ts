@@ -52,9 +52,13 @@ export type Building = {
   id: LocationId;
   name: string;
   sub: string;
-  /** Short name for the hanging sign — long strings overflow the board. */
+  /** Short form of the name, kept for the map check listing. */
   sign: string;
-  /** What the visitor will find inside, second line of the sign. */
+  /**
+   * What the visitor will find inside. This is what the hanging sign shows —
+   * one short line. Anything longer overflows the board, which then overhangs
+   * the roof and the neighbouring buildings.
+   */
   signSub: string;
   icon: IconKind;
   /** Tile coords of the top-left of the footprint. */
@@ -87,7 +91,7 @@ export const buildings: Building[] = [
     name: "The Archive",
     sub: "About & Education",
     sign: "ARCHIVE",
-    signSub: "WHO I AM",
+    signSub: "ABOUT",
     icon: "book",
     x: 11,
     y: 5,
@@ -138,21 +142,20 @@ export const buildings: Building[] = [
     signSub: "PROJECTS",
     icon: "frame",
     x: 5,
-    y: 15,
+    y: 14,
     w: 8,
     h: 5,
     doorX: 8,
-    doorY: 20,
+    doorY: 19,
     wall: "#b09a72",
     roof: "#5c8c3e",
     roofDark: "#3f6828",
     flair: "banner",
     road: [
       { x: 24, y: 16 },
-      { x: 18, y: 16 },
-      { x: 14, y: 21 },
-      { x: 8, y: 21 },
-      { x: 8, y: 20 },
+      { x: 16, y: 16 },
+      { x: 16, y: 19 },
+      { x: 8, y: 19 },
     ],
   },
   {
@@ -163,21 +166,20 @@ export const buildings: Building[] = [
     signSub: "SKILLS",
     icon: "anvil",
     x: 36,
-    y: 15,
+    y: 14,
     w: 7,
     h: 5,
     doorX: 39,
-    doorY: 20,
+    doorY: 19,
     wall: "#8f6f52",
     roof: "#a8442a",
     roofDark: "#7b2d19",
     flair: "forge",
     road: [
       { x: 24, y: 16 },
-      { x: 30, y: 16 },
-      { x: 34, y: 21 },
-      { x: 39, y: 21 },
-      { x: 39, y: 20 },
+      { x: 32, y: 16 },
+      { x: 32, y: 19 },
+      { x: 39, y: 19 },
     ],
   },
   {
@@ -185,11 +187,11 @@ export const buildings: Building[] = [
     name: "Trophy Hall",
     sub: "Certifications",
     sign: "TROPHY HALL",
-    signSub: "CERTIFICATIONS",
+    signSub: "CERTIFICATES",
     icon: "trophy",
-    x: 13,
+    x: 12,
     y: 20,
-    w: 6,
+    w: 7,
     h: 4,
     doorX: 15,
     doorY: 24,
@@ -200,8 +202,7 @@ export const buildings: Building[] = [
     road: [
       { x: 24, y: 16 },
       { x: 20, y: 19 },
-      { x: 20, y: 25 },
-      { x: 15, y: 25 },
+      { x: 20, y: 24 },
       { x: 15, y: 24 },
     ],
   },
@@ -212,11 +213,11 @@ export const buildings: Building[] = [
     sign: "POST OFFICE",
     signSub: "CONTACT",
     icon: "mail",
-    x: 29,
+    x: 30,
     y: 20,
     w: 6,
     h: 4,
-    doorX: 31,
+    doorX: 32,
     doorY: 24,
     wall: "#9a7f66",
     roof: "#c25f3c",
@@ -224,10 +225,9 @@ export const buildings: Building[] = [
     flair: "mail",
     road: [
       { x: 24, y: 16 },
-      { x: 27, y: 19 },
-      { x: 27, y: 25 },
-      { x: 31, y: 25 },
-      { x: 31, y: 24 },
+      { x: 28, y: 19 },
+      { x: 28, y: 24 },
+      { x: 32, y: 24 },
     ],
   },
 ];
@@ -250,7 +250,7 @@ const groves: Rect[] = [
   { x: 39, y: 4, w: 5, h: 7 },
   { x: 4, y: 26, w: 7, h: 3 },
   { x: 22, y: 21, w: 4, h: 4 },
-  { x: 42, y: 12, w: 3, h: 7 },
+  { x: 16, y: 27, w: 5, h: 2 },
 ];
 
 /**
@@ -314,13 +314,11 @@ export const props: Prop[] = [
   // The fountain sits dead centre; the plaza ring flows around it.
   { kind: "fountain", x: 23, y: 15 },
 
-  // Plaza ring: lamps between the road mouths, benches facing the water.
-  { kind: "lamp", x: 20, y: 13 },
-  { kind: "lamp", x: 28, y: 13 },
-  { kind: "lamp", x: 20, y: 19 },
-  { kind: "lamp", x: 28, y: 19 },
-  { kind: "bench", x: 22, y: 19 },
-  { kind: "bench", x: 25, y: 12 },
+  // Plaza furniture, placed north and south where no road leaves the circle.
+  { kind: "lamp", x: 24, y: 10 },
+  { kind: "lamp", x: 24, y: 22 },
+  { kind: "bench", x: 22, y: 11 },
+  { kind: "bench", x: 25, y: 21 },
 
   // Archive garden
   { kind: "pot", x: 10, y: 10 },
@@ -334,22 +332,21 @@ export const props: Prop[] = [
 
   // Gallery frontage
   { kind: "lamp", x: 4, y: 21 },
-  { kind: "pot", x: 12, y: 20 },
-  { kind: "bench", x: 11, y: 23 },
+  { kind: "pot", x: 11, y: 21 },
+  { kind: "bench", x: 9, y: 22 },
 
   // Foundry yard
-  { kind: "barrel", x: 35, y: 20 },
+  { kind: "barrel", x: 35, y: 17 },
   { kind: "barrel", x: 43, y: 20 },
   { kind: "stump", x: 35, y: 14 },
 
   // Trophy Hall
-  { kind: "lamp", x: 12, y: 26 },
-  { kind: "pot", x: 19, y: 27 },
+  { kind: "lamp", x: 11, y: 26 },
+  { kind: "pot", x: 19, y: 26 },
 
   // Post Office
   { kind: "crate", x: 26, y: 27 },
-  { kind: "lamp", x: 35, y: 26 },
-  { kind: "well", x: 34, y: 17 },
+  { kind: "lamp", x: 36, y: 21 },
 
   // Pond side
   { kind: "stump", x: 36, y: 24 },

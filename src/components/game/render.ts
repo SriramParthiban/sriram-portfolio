@@ -139,13 +139,13 @@ function shade(t: number, px: number, py: number): RGB {
       return pick(SAND, n);
     }
     case Terrain.Path: {
-      const n = fbm(px * 0.3, py * 0.3);
+      const n = fbm(px * 0.26, py * 0.26);
       const g = hash2(px, py);
-      // Grit and small stones scattered through the dirt.
-      if (g > 0.985) return [96, 92, 86];
-      if (g > 0.955) return PATH[0];
-      if (g < 0.03) return PATH[4];
-      return pick(PATH, n);
+      // Grit and small stones, sparse — heavy speckle reads as noise, not dirt.
+      if (g > 0.993) return [104, 98, 90];
+      if (g > 0.976) return PATH[0];
+      if (g < 0.014) return PATH[4];
+      return pick(PATH, n * 0.7 + 0.18);
     }
     case Terrain.Plaza: {
       // Cobbles: offset rows of cells with mortar joints between them.
@@ -211,13 +211,14 @@ export function buildGroundCanvas() {
       let t = baseTerrain(tx, ty);
       let best = RANK[t] ?? 3;
 
-      // Irregular fringe so terrain boundaries are organic, not straight
-      // tile edges. This single step does most of the work of an autotiler.
-      // Two frequencies: broad lobes plus a fine ragged edge on top.
+      // Irregular fringe so terrain boundaries are organic, not straight tile
+      // edges. Kept modest: a road is only two tiles wide, and at the previous
+      // ~8px of creep per side the grass ate half of it and the roads read as
+      // blobby dirt patches rather than routes.
       const fringe =
-        1.5 +
-        smoothNoise(px * 0.12, py * 0.12) * 4.5 +
-        fbm(px * 0.7, py * 0.7) * 2.5;
+        0.8 +
+        smoothNoise(px * 0.15, py * 0.15) * 2.2 +
+        fbm(px * 0.8, py * 0.8) * 1.2;
 
       for (const [dx, dy] of NEIGHBOURS) {
         const nt = baseTerrain(tx + dx, ty + dy);
@@ -595,9 +596,12 @@ function drawIcon(
 
 const buildingCache = new Map<string, { canvas: HTMLCanvasElement; ox: number; oy: number }>();
 
-const SIGN_PAD = 5;
+const SIGN_PAD = 4;
 const OVERHANG = 6;
-const TOP_MARGIN = 34;
+// Only the roof overhang needs headroom. The chimney and other flourishes are
+// painted per frame in world space, not baked into this sprite — reserving 34px
+// here just meant every building drew over the road running past its north side.
+const TOP_MARGIN = 4;
 
 function makeBuilding(b: Building) {
   const w = b.w * TILE;
@@ -755,42 +759,37 @@ function makeBuilding(b: Building) {
   r(rx0, y0 + roofH, rw, 2, "rgba(0,0,0,0.35)");
 
   /* ---- hanging sign ---- */
-  const nameW = textWidth(b.sign);
-  const subW = textWidth(b.signSub);
-  const iconW = 12;
-  const boardW = Math.max(nameW, subW) + iconW + SIGN_PAD * 3;
-  const boardH = 7 + 3 + 7 + SIGN_PAD * 2;
+  // One line: what the visitor will find inside. Two lines plus the building's
+  // own name made a board that overhung the roof and its neighbours. The
+  // evocative name still shows in the HUD and the panel header.
+  const label = b.signSub;
+  const iconW = 10;
+  const boardH = 7 + SIGN_PAD * 2;
+  const boardW = Math.min(
+    textWidth(label) + iconW + SIGN_PAD * 3,
+    w - 10, // never wider than the building it hangs on
+  );
   const bx = Math.round(x0 + w / 2 - boardW / 2);
-  const by = Math.round(wallTop - 6);
+  // Straddles the eave, so it reads as mounted rather than floating.
+  const by = Math.round(wallTop - boardH / 2);
 
   // Brackets into the wall
-  r(bx + 6, by - 5, 2, 6, "#4a3527");
-  r(bx + boardW - 8, by - 5, 2, 6, "#4a3527");
+  r(bx + 4, by + boardH - 2, 2, 5, "#4a3527");
+  r(bx + boardW - 6, by + boardH - 2, 2, 5, "#4a3527");
   // Board
-  r(bx - 1, by - 1, boardW + 2, boardH + 2, "#3a291c");
+  r(bx - 1, by - 1, boardW + 2, boardH + 2, "#33241a");
   r(bx, by, boardW, boardH, "#7a5a3a");
   r(bx, by, boardW, 1, "#a17c52");
   r(bx, by + boardH - 2, boardW, 2, "#563c26");
-  // Plank seam across the board
-  r(bx, by + Math.floor(boardH / 2), boardW, 1, "rgba(0,0,0,0.16)");
-  // Inner bevel
-  r(bx + 2, by + 2, boardW - 4, boardH - 4, "rgba(0,0,0,0.12)");
+  r(bx + 1, by + 1, boardW - 2, boardH - 2, "rgba(0,0,0,0.1)");
 
-  drawIcon(ctx, b.icon, bx + SIGN_PAD, by + SIGN_PAD + 2);
+  drawIcon(ctx, b.icon, bx + SIGN_PAD, by + SIGN_PAD - 1);
   drawText(
     ctx,
-    b.sign,
+    label,
     bx + SIGN_PAD * 2 + iconW,
     by + SIGN_PAD,
     "#f6ead2",
-    "#2a1c11",
-  );
-  drawText(
-    ctx,
-    b.signSub,
-    bx + SIGN_PAD * 2 + iconW,
-    by + SIGN_PAD + 10,
-    "#f0a878",
     "#2a1c11",
   );
 
