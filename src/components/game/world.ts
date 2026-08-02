@@ -33,10 +33,23 @@ export type LocationId =
   | "trophy"
   | "post";
 
+export type IconKind =
+  | "book"
+  | "gear"
+  | "anvil"
+  | "frame"
+  | "trophy"
+  | "mail";
+
 export type Building = {
   id: LocationId;
   name: string;
   sub: string;
+  /** Short name for the hanging sign — long strings overflow the board. */
+  sign: string;
+  /** What the visitor will find inside, second line of the sign. */
+  signSub: string;
+  icon: IconKind;
   /** Tile coords of the top-left of the footprint. */
   x: number;
   y: number;
@@ -57,6 +70,9 @@ export const buildings: Building[] = [
     id: "archive",
     name: "The Archive",
     sub: "About & Education",
+    sign: "ARCHIVE",
+    signSub: "WHO I AM",
+    icon: "book",
     x: 6,
     y: 4,
     w: 7,
@@ -72,6 +88,9 @@ export const buildings: Building[] = [
     id: "workshop",
     name: "The Workshop",
     sub: "Experience",
+    sign: "WORKSHOP",
+    signSub: "EXPERIENCE",
+    icon: "gear",
     x: 20,
     y: 3,
     w: 8,
@@ -87,6 +106,9 @@ export const buildings: Building[] = [
     id: "foundry",
     name: "The Foundry",
     sub: "Capabilities",
+    sign: "FOUNDRY",
+    signSub: "SKILLS",
+    icon: "anvil",
     x: 35,
     y: 5,
     w: 7,
@@ -102,6 +124,9 @@ export const buildings: Building[] = [
     id: "gallery",
     name: "The Gallery",
     sub: "Projects",
+    sign: "GALLERY",
+    signSub: "PROJECTS",
+    icon: "frame",
     x: 5,
     y: 18,
     w: 8,
@@ -117,6 +142,9 @@ export const buildings: Building[] = [
     id: "trophy",
     name: "Trophy Hall",
     sub: "Certifications",
+    sign: "TROPHY HALL",
+    signSub: "CERTIFICATIONS",
+    icon: "trophy",
     x: 19,
     y: 19,
     w: 6,
@@ -132,6 +160,9 @@ export const buildings: Building[] = [
     id: "post",
     name: "Post Office",
     sub: "Contact",
+    sign: "POST OFFICE",
+    signSub: "CONTACT",
+    icon: "mail",
     x: 33,
     y: 18,
     w: 6,
@@ -170,6 +201,9 @@ const paths = rects([
   { x: 35, y: 15, w: 2, h: 8 },
   // Southern path toward the pond
   { x: 24, y: 25, w: 14, h: 2 },
+  // Spur up to the Post Office. Its northern path is covered by the building
+  // itself, so without this the door is reached by one tile of shore.
+  { x: 35, y: 22, w: 1, h: 3 },
 ]);
 
 const forests = rects([
@@ -189,8 +223,11 @@ const meadows = rects([
   { x: 10, y: 26, w: 8, h: 3 },
 ]);
 
-/** Pond, as a centre plus radii so the shore reads as a curve. */
-const pond = { cx: 40, cy: 26, rx: 6, ry: 4 };
+/**
+ * Pond, as a centre plus radii so the shore reads as a curve. rx is kept at 5
+ * so the water stops short of the Post Office approach at x=35.
+ */
+const pond = { cx: 40, cy: 26, rx: 5, ry: 4 };
 
 const inRect = (x: number, y: number, r: Rect) =>
   x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
@@ -258,6 +295,71 @@ export const terrainAt = (x: number, y: number): Terrain => {
   return terrain[y * MAP_W + x];
 };
 
+/* --------------------------------------------------------------- scenery */
+
+export type PropKind =
+  | "lamp"
+  | "barrel"
+  | "crate"
+  | "pot"
+  | "bench"
+  | "stump"
+  | "well";
+
+export type Prop = { kind: PropKind; x: number; y: number };
+
+/**
+ * Placed by hand off the walkable paths. All of these collide, so the
+ * reachability check has to run after any change here.
+ */
+export const props: Prop[] = [
+  // Plaza furniture
+  { kind: "well", x: 27, y: 15 },
+  { kind: "bench", x: 19, y: 12 },
+  { kind: "bench", x: 28, y: 12 },
+  { kind: "lamp", x: 18, y: 11 },
+  { kind: "lamp", x: 29, y: 11 },
+  { kind: "lamp", x: 18, y: 16 },
+  { kind: "lamp", x: 29, y: 16 },
+  // Workshop yard
+  { kind: "crate", x: 19, y: 9 },
+  { kind: "barrel", x: 27, y: 9 },
+  { kind: "crate", x: 28, y: 10 },
+  // Foundry yard
+  { kind: "barrel", x: 34, y: 11 },
+  { kind: "barrel", x: 42, y: 10 },
+  { kind: "stump", x: 33, y: 8 },
+  // Archive garden
+  { kind: "pot", x: 5, y: 10 },
+  { kind: "pot", x: 13, y: 10 },
+  { kind: "lamp", x: 11, y: 12 },
+  // Gallery frontage
+  { kind: "lamp", x: 5, y: 24 },
+  { kind: "pot", x: 12, y: 24 },
+  // Trophy Hall
+  { kind: "lamp", x: 18, y: 24 },
+  { kind: "bench", x: 25, y: 22 },
+  // Post Office
+  { kind: "crate", x: 32, y: 23 },
+  { kind: "lamp", x: 39, y: 21 },
+  // Pond side
+  { kind: "stump", x: 31, y: 27 },
+  // Keep clear of 34,24 — that single sand tile is the only approach to the
+  // Post Office door, since the building itself covers its northern path.
+  { kind: "bench", x: 29, y: 24 },
+];
+
+/** Footprint of each prop in tiles, for collision. */
+export const PROP_SIZE: Record<PropKind, { w: number; h: number }> = {
+  lamp: { w: 1, h: 1 },
+  barrel: { w: 1, h: 1 },
+  crate: { w: 1, h: 1 },
+  pot: { w: 1, h: 1 },
+  bench: { w: 2, h: 1 },
+  stump: { w: 1, h: 1 },
+  well: { w: 2, h: 2 },
+};
+
 const SOLID = new Set<Terrain>([
   Terrain.Tree,
   Terrain.Water,
@@ -280,6 +382,15 @@ export const solid: boolean[] = (() => {
     }
     // The door sits on the row below the footprint and must stay walkable.
     out[b.doorY * MAP_W + b.doorX] = false;
+  }
+
+  for (const p of props) {
+    const size = PROP_SIZE[p.kind];
+    for (let y = p.y; y < p.y + size.h; y++) {
+      for (let x = p.x; x < p.x + size.w; x++) {
+        if (x >= 0 && y >= 0 && x < MAP_W && y < MAP_H) out[y * MAP_W + x] = true;
+      }
+    }
   }
 
   return out;

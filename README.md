@@ -83,6 +83,17 @@ Borrowed from how Stardew Valley builds a map:
 
 - **16px tiles**, drawn at an integer scale (3× to 5× depending on viewport) so
   pixels stay square.
+- **The ground is composed per pixel** into an `ImageData` buffer, not filled as
+  rectangles — value noise for grass, grit and stones in the dirt, offset cobble
+  courses with mortar joints. Detail at this density is what separates the look
+  from flat colour blocks.
+- **Organic terrain edges.** Where two terrains meet, the higher-ranked one
+  creeps over the boundary by a noise-driven amount, so grass frays into paths
+  and sand into water instead of meeting on a straight tile edge.
+- **Sprites are pre-rendered once** to offscreen canvases and blitted. Trees,
+  buildings and props carry far too much per-pixel detail to repaint each frame.
+- **In-world text** uses a hand-built 5×7 bitmap font. `fillText` would
+  anti-alias and break the illusion next to a 16px tile.
 - **Depth sorting on the bottom edge.** Trees, buildings and the player go into
   one list sorted by their baseline Y, so you walk *behind* a tree canopy but
   *in front of* its trunk. This is the single trick that makes a flat tilemap
@@ -94,9 +105,20 @@ Borrowed from how Stardew Valley builds a map:
 - **Movement is axis-separated**, so you slide along a wall instead of sticking
   to it.
 
+Every building carries a hanging sign with its name, what's inside, and a
+pictogram, so you know where you're going before you walk in.
+
 Terrain is generated from feature rectangles in `world.ts` rather than a
 hand-typed tile string — a 48×32 string is 1536 characters that all have to line
 up, and one miscount silently shifts the whole map.
+
+### Changing the map
+
+Buildings and props all collide, so moving one can wall off a door — the Post
+Office is reached by a single spur because its own footprint covers its northern
+path. After editing `world.ts`, re-run the reachability check: flood fill from
+spawn and assert every door is still reachable, no footprints overlap, and no
+prop is sitting on a path or in the water.
 
 The world renders client-side only. That is deliberate: the page's HTML still
 contains the full resume text for crawlers and link previews, with the game

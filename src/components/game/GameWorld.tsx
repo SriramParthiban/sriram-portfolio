@@ -15,6 +15,7 @@ import { drawCharacter, type Dir } from "./sprite";
 import {
   buildGroundCanvas,
   drawBuilding,
+  drawProp,
   drawTree,
   drawWater,
 } from "./render";
@@ -26,9 +27,11 @@ import {
   SPAWN,
   TILE,
   Terrain,
+  PROP_SIZE,
   buildings,
   doorAt,
   isSolid,
+  props,
   regionAt,
   terrainAt,
 } from "./world";
@@ -389,6 +392,21 @@ export default function GameWorld() {
         items.push({
           sort: (b.y + b.h) * TILE,
           draw: () => drawBuilding(ctx, b, elapsed),
+        });
+      }
+
+      for (const p of props) {
+        if (
+          p.x < tx0 - 3 ||
+          p.x > tx1 + 3 ||
+          p.y < ty0 - 4 ||
+          p.y > ty1 + 3
+        ) {
+          continue;
+        }
+        items.push({
+          sort: (p.y + PROP_SIZE[p.kind].h) * TILE,
+          draw: () => drawProp(ctx, p.kind, p.x, p.y),
         });
       }
 
